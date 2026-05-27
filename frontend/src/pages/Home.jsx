@@ -130,6 +130,7 @@ export default function Home() {
             title="Sisteplass"
             player={last}
             accentClass="border-red-500/40"
+            image="/sisteplass.jpg"
           />
         </div>
       </div>
