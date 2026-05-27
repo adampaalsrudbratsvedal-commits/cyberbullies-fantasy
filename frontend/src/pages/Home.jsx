@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getStandings } from '../api'
 
-function PlayerCard({ title, player, accentClass, icon }) {
+function PlayerCard({ title, player, accentClass }) {
   const initials = player?.userName
     ? player.userName.slice(0, 2).toUpperCase()
     : '?'
@@ -25,7 +25,6 @@ function PlayerCard({ title, player, accentClass, icon }) {
             {player?.overallPoints != null ? `${player.overallPoints} p` : 'Ingen data ennå'}
           </p>
         </div>
-        <div className="ml-auto text-2xl">{icon}</div>
       </div>
     </div>
   )
@@ -117,19 +116,17 @@ export default function Home() {
             title="Leder"
             player={leader}
             accentClass="border-yellow-500/40"
-            icon="🏆"
+
           />
           <PlayerCard
             title="Regjerende rundemester"
             player={roundWinner}
             accentClass="border-blue-500/40"
-            icon="⚡"
           />
           <PlayerCard
             title="Sisteplass"
             player={last}
             accentClass="border-red-500/40"
-            icon="💀"
           />
         </div>
       </div>
