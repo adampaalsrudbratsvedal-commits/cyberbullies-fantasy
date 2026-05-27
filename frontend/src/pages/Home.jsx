@@ -124,6 +124,7 @@ export default function Home() {
             title="Regjerende rundemester"
             player={roundWinner}
             accentClass="border-blue-500/40"
+            image="/rundevinner.png"
           />
           <PlayerCard
             title="Sisteplass"
