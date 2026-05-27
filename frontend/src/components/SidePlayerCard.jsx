@@ -9,7 +9,6 @@
 // secondary values (round number, leader's overall for the "from leader"
 // gap on the last-place card).
 
-import Avatar from './Avatar'
 import { TH } from '../lib/theme'
 
 export default function SidePlayerCard({ kind, player, roundNo, leaderOverall }) {
