@@ -1,51 +1,49 @@
 export default function Pitch() {
   return (
     <div aria-hidden className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-      {/* Base */}
-      <div className="absolute inset-0" style={{ background: '#0a1a10' }} />
-      {/* Mowed grass stripes — high contrast */}
+
+      {/* Horizontal grass stripes — clearly visible alternating bands */}
       <div
         className="absolute inset-0"
         style={{
-          background:
-            'repeating-linear-gradient(180deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 60px, transparent 60px, transparent 120px)',
+          background: 'repeating-linear-gradient(180deg, #0d2318 0px, #0d2318 80px, #091810 80px, #091810 160px)',
         }}
       />
 
-      {/* Stadium floodlight wash from top */}
+      {/* Stadium floodlight glow from top centre */}
       <div
         className="absolute inset-0"
         style={{
-          background:
-            'radial-gradient(ellipse 120% 60% at 50% -5%, rgba(94,234,147,0.10) 0%, transparent 60%)',
+          background: 'radial-gradient(ellipse 140% 50% at 50% 0%, rgba(94,234,147,0.08) 0%, transparent 55%)',
         }}
       />
 
-      {/* Bottom fade to dark */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.45) 100%)',
-        }}
-      />
-
-      {/* Pitch lines — centre line + circle + centre dot */}
+      {/* Pitch lines */}
       <svg
         className="absolute inset-0 w-full h-full"
         preserveAspectRatio="xMidYMid slice"
         viewBox="0 0 1440 900"
-        style={{ opacity: 0.22 }}
+        style={{ opacity: 0.18 }}
       >
-        {/* Centre vertical line */}
-        <line x1="720" y1="0" x2="720" y2="900" stroke="#5eea93" strokeWidth="1.5" />
+        {/* Halfway line */}
+        <line x1="720" y1="0" x2="720" y2="900" stroke="#5eea93" strokeWidth="2" />
         {/* Centre circle */}
-        <circle cx="720" cy="450" r="150" stroke="#5eea93" strokeWidth="1.5" fill="none" />
+        <circle cx="720" cy="450" r="160" stroke="#5eea93" strokeWidth="2" fill="none" />
         {/* Centre dot */}
-        <circle cx="720" cy="450" r="4" fill="#5eea93" />
-        {/* Penalty arcs */}
-        <path d="M 720 50 L 400 50 L 400 250 L 720 250 Z" stroke="#5eea93" strokeWidth="1.5" fill="none" opacity="0.5" />
-        <path d="M 720 50 L 1040 50 L 1040 250 L 720 250 Z" stroke="#5eea93" strokeWidth="1.5" fill="none" opacity="0.5" />
+        <circle cx="720" cy="450" r="5" fill="#5eea93" />
+        {/* Left penalty box */}
+        <rect x="0" y="270" width="200" height="360" stroke="#5eea93" strokeWidth="2" fill="none" />
+        {/* Right penalty box */}
+        <rect x="1240" y="270" width="200" height="360" stroke="#5eea93" strokeWidth="2" fill="none" />
+        {/* Outer boundary */}
+        <rect x="20" y="30" width="1400" height="840" stroke="#5eea93" strokeWidth="2" fill="none" />
       </svg>
+
+      {/* Subtle dark vignette at bottom */}
+      <div
+        className="absolute inset-0"
+        style={{ background: 'linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.4) 100%)' }}
+      />
     </div>
   )
 }
