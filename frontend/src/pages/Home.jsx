@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getStandings } from '../api'
 
-function PlayerCard({ title, player, accentClass }) {
+function PlayerCard({ title, player, accentClass, image }) {
   const initials = player?.userName
     ? player.userName.slice(0, 2).toUpperCase()
     : '?'
@@ -11,7 +11,9 @@ function PlayerCard({ title, player, accentClass }) {
       <p className="text-slate-400 text-xs uppercase tracking-widest mb-3">{title}</p>
       <div className="flex items-center gap-3">
         <div className={`w-14 h-14 rounded-full bg-slate-700 border-2 ${accentClass} flex items-center justify-center flex-shrink-0 overflow-hidden`}>
-          {player ? (
+          {image ? (
+            <img src={image} alt={title} className="w-full h-full object-cover" />
+          ) : player ? (
             <span className="text-lg font-bold text-slate-300">{initials}</span>
           ) : (
             <svg className="w-7 h-7 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -116,7 +118,7 @@ export default function Home() {
             title="Leder"
             player={leader}
             accentClass="border-yellow-500/40"
-
+            image="/trophy.png"
           />
           <PlayerCard
             title="Regjerende rundemester"
