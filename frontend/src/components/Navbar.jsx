@@ -25,7 +25,7 @@ export default function Navbar() {
 
           {/* Logo + brand */}
           <div className="flex items-center gap-3">
-            <img src="/vm-logo.png" alt="FIFA World Cup 2026" className="h-9 w-auto" onError={(e) => { e.target.style.display = 'none' }} />
+            <img src="/VM_LOGO.png" alt="FIFA World Cup 2026" className="h-9 w-auto" onError={(e) => { e.target.style.display = 'none' }} />
             <span className="text-white font-bold text-sm tracking-widest uppercase hidden sm:block">
               Fotball VM 2026
             </span>
