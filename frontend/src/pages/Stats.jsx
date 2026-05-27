@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { getSimulation, getStats } from '../api'
 
 const MOCK_SIM = {
-  KalkunBlaster: { win_probability: 0.41, last_probability: 0.18, expected_final: 432 },
-  Apb03: { win_probability: 0.35, last_probability: 0.22, expected_final: 415 },
-  Odin67: { win_probability: 0.24, last_probability: 0.60, expected_final: 398 },
+  KalkunBlaster: { win_probability: 0.333, last_probability: 0.333, expected_final: 385 },
+  Apb03: { win_probability: 0.333, last_probability: 0.333, expected_final: 385 },
+  Odin67: { win_probability: 0.333, last_probability: 0.333, expected_final: 385 },
 }
 
 function ProbBar({ value, color }) {

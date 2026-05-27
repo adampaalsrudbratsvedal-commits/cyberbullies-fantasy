@@ -15,9 +15,9 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173"]
 
     league_name: str = "Cyberbullies"
-    monte_carlo_mean: float = 60.0
+    monte_carlo_mean: float = 55.0
     monte_carlo_std: float = 15.0
-    monte_carlo_simulations: int = 10000
+    monte_carlo_simulations: int = 100000
 
     class Config:
         env_file = ".env"
