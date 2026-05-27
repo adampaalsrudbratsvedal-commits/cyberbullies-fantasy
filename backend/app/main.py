@@ -4,7 +4,10 @@ from .config import settings
 from .database import engine, Base
 from .routers import league, auth, admin
 
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"[DB] create_all failed (tables may already exist): {e}")
 
 app = FastAPI(title="Cyberbullies Fantasy")
 

@@ -1,15 +1,17 @@
+import ssl
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from .config import settings
 
-def _make_url(url: str) -> str:
-    # Vercel requires pg8000 (pure Python) instead of psycopg2
+def _build_engine(url: str):
     if url.startswith("postgresql://") or url.startswith("postgres://"):
-        return url.replace("postgresql://", "postgresql+pg8000://", 1).replace("postgres://", "postgresql+pg8000://", 1)
-    return url
+        url = url.replace("postgresql://", "postgresql+pg8000://", 1) \
+                 .replace("postgres://", "postgresql+pg8000://", 1)
+        return create_engine(url, connect_args={"ssl_context": ssl.create_default_context()})
+    return create_engine(url)
 
-engine = create_engine(_make_url(settings.database_url))
+engine = _build_engine(settings.database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
