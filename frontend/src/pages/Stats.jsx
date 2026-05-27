@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { getSimulation, getProbabilityHistory } from '../api'
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-const PLAYER_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#a855f7', '#06b6d4']
+const PLAYER_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#a855f7', '#06b6d4', '#f97316', '#84cc16', '#e11d48', '#0ea5e9', '#8b5cf6', '#14b8a6']
 
 function ProbBar({ value, color }) {
   return (
@@ -39,7 +39,7 @@ function ProbChart({ history, valueKey, title }) {
     <section>
       <h2 className="text-slate-300 font-semibold mb-4 uppercase text-xs tracking-widest">{title}</h2>
       <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
-        <ResponsiveContainer width="100%" height={220}>
+        <ResponsiveContainer width="100%" height={260}>
           <LineChart data={data}>
             <XAxis dataKey="round" stroke="#64748b" tick={{ fontSize: 12 }} />
             <YAxis stroke="#64748b" tick={{ fontSize: 12 }} unit="%" domain={[0, 100]} />
@@ -119,8 +119,8 @@ export default function Stats() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <SimSection
-          title="Sannsynlighet for seier (Monte Carlo)"
-          entries={simEntries}
+          title="Sannsynlighet for seier"
+          entries={simEntries.slice(0, 5)}
           valueKey="win_probability"
           color="bg-green-500"
         />
@@ -130,7 +130,7 @@ export default function Stats() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <SimSection
           title="Sannsynlighet for sisteplass"
-          entries={[...simEntries].sort((a, b) => b[1].last_probability - a[1].last_probability)}
+          entries={[...simEntries].sort((a, b) => b[1].last_probability - a[1].last_probability).slice(0, 5)}
           valueKey="last_probability"
           color="bg-red-500"
         />
