@@ -121,22 +121,25 @@ export default function Stats() {
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
       <h1 className="text-2xl font-bold text-white">Stats</h1>
 
-      <SimSection
-        title="Sannsynlighet for seier (Monte Carlo)"
-        entries={simEntries}
-        valueKey="win_probability"
-        color="bg-green-500"
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SimSection
+          title="Sannsynlighet for seier (Monte Carlo)"
+          entries={simEntries}
+          valueKey="win_probability"
+          color="bg-green-500"
+        />
+        <ProbChart history={probHistory} valueKey="win_probability" title="Vinnersannsynlighet per runde" />
+      </div>
 
-      <SimSection
-        title="Sannsynlighet for sisteplass"
-        entries={[...simEntries].sort((a, b) => b[1].last_probability - a[1].last_probability)}
-        valueKey="last_probability"
-        color="bg-red-500"
-      />
-
-      <ProbChart history={probHistory} valueKey="win_probability" title="Vinnersannsynlighet per runde" />
-      <ProbChart history={probHistory} valueKey="last_probability" title="Sisteplasssannsynlighet per runde" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SimSection
+          title="Sannsynlighet for sisteplass"
+          entries={[...simEntries].sort((a, b) => b[1].last_probability - a[1].last_probability)}
+          valueKey="last_probability"
+          color="bg-red-500"
+        />
+        <ProbChart history={probHistory} valueKey="last_probability" title="Sisteplasssannsynlighet per runde" />
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <section>
