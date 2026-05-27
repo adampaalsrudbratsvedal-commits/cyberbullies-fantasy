@@ -118,10 +118,10 @@ export default function Stats() {
   )
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
       <h1 className="text-2xl font-bold text-white">Stats</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <SimSection
           title="Sannsynlighet for seier (Monte Carlo)"
           entries={simEntries}
@@ -131,7 +131,7 @@ export default function Stats() {
         <ProbChart history={probHistory} valueKey="win_probability" title="Vinnersannsynlighet per runde" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <SimSection
           title="Sannsynlighet for sisteplass"
           entries={[...simEntries].sort((a, b) => b[1].last_probability - a[1].last_probability)}
