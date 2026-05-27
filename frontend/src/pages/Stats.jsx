@@ -1,12 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getSimulation, getStats } from '../api'
 
-const MOCK_SIM = {
-  KalkunBlaster: { win_probability: 0.333, last_probability: 0.333, expected_final: 385 },
-  Apb03: { win_probability: 0.333, last_probability: 0.333, expected_final: 385 },
-  Odin67: { win_probability: 0.333, last_probability: 0.333, expected_final: 385 },
-}
-
 function ProbBar({ value, color }) {
   return (
     <div className="flex items-center gap-2">
@@ -25,12 +19,16 @@ function ProbBar({ value, color }) {
 
 export default function Stats() {
   const [sim, setSim] = useState(null)
+  const [simError, setSimError] = useState(false)
+  const [simLoading, setSimLoading] = useState(true)
   const [stats, setStats] = useState(null)
 
   useEffect(() => {
+    setSimLoading(true)
     getSimulation()
       .then((r) => setSim(r.data))
-      .catch(() => setSim(MOCK_SIM))
+      .catch(() => setSimError(true))
+      .finally(() => setSimLoading(false))
     getStats()
       .then((r) => setStats(r.data))
       .catch(() => setStats({ most_round_wins: [], most_round_losses: [] }))
@@ -40,46 +38,56 @@ export default function Stats() {
     ? Object.entries(sim).sort((a, b) => b[1].win_probability - a[1].win_probability)
     : []
 
+  const SimSection = ({ title, entries, valueKey, color }) => (
+    <section>
+      <h2 className="text-slate-300 font-semibold mb-4 uppercase text-xs tracking-widest">
+        {title}
+      </h2>
+      <div className="bg-slate-800 rounded-lg border border-slate-700 divide-y divide-slate-700">
+        {simLoading ? (
+          <div className="px-5 py-6 text-slate-500 text-sm text-center">
+            Beregner simuleringer…
+          </div>
+        ) : simError ? (
+          <div className="px-5 py-6 text-red-400 text-sm text-center">
+            Kunne ikke hente simuleringsdata fra serveren
+          </div>
+        ) : (
+          entries.map(([name, data]) => (
+            <div key={name} className="px-5 py-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-medium text-white">{name}</span>
+                {valueKey === 'win_probability' && (
+                  <span className="text-slate-400 text-xs">
+                    Forventet: {data.expected_final.toFixed(0)} p
+                  </span>
+                )}
+              </div>
+              <ProbBar value={data[valueKey]} color={color} />
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  )
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
       <h1 className="text-2xl font-bold text-white">Stats</h1>
 
-      <section>
-        <h2 className="text-slate-300 font-semibold mb-4 uppercase text-xs tracking-widest">
-          Sannsynlighet for seier (Monte Carlo)
-        </h2>
-        <div className="bg-slate-800 rounded-lg border border-slate-700 divide-y divide-slate-700">
-          {simEntries.map(([name, data]) => (
-            <div key={name} className="px-5 py-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-medium text-white">{name}</span>
-                <span className="text-slate-400 text-xs">
-                  Forventet: {data.expected_final.toFixed(0)} p
-                </span>
-              </div>
-              <ProbBar value={data.win_probability} color="bg-green-500" />
-            </div>
-          ))}
-        </div>
-      </section>
+      <SimSection
+        title="Sannsynlighet for seier (Monte Carlo)"
+        entries={simEntries}
+        valueKey="win_probability"
+        color="bg-green-500"
+      />
 
-      <section>
-        <h2 className="text-slate-300 font-semibold mb-4 uppercase text-xs tracking-widest">
-          Sannsynlighet for sisteplass
-        </h2>
-        <div className="bg-slate-800 rounded-lg border border-slate-700 divide-y divide-slate-700">
-          {[...simEntries]
-            .sort((a, b) => b[1].last_probability - a[1].last_probability)
-            .map(([name, data]) => (
-              <div key={name} className="px-5 py-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium text-white">{name}</span>
-                </div>
-                <ProbBar value={data.last_probability} color="bg-red-500" />
-              </div>
-            ))}
-        </div>
-      </section>
+      <SimSection
+        title="Sannsynlighet for sisteplass"
+        entries={[...simEntries].sort((a, b) => b[1].last_probability - a[1].last_probability)}
+        valueKey="last_probability"
+        color="bg-red-500"
+      />
 
       <div className="grid grid-cols-2 gap-4">
         <section>

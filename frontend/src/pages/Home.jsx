@@ -1,20 +1,15 @@
 import { useEffect, useState } from 'react'
 import { getStandings } from '../api'
 
-const MOCK_STANDINGS = [
-  { userName: 'KalkunBlaster', overallPoints: null, roundPoints: null, overallRank: 1 },
-  { userName: 'Apb03', overallPoints: null, roundPoints: null, overallRank: 2 },
-  { userName: 'Odin67', overallPoints: null, roundPoints: null, overallRank: 3 },
-]
-
 export default function Home() {
   const [standings, setStandings] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     getStandings()
       .then((r) => setStandings(r.data))
-      .catch(() => setStandings(MOCK_STANDINGS))
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [])
 
@@ -77,6 +72,12 @@ export default function Home() {
                 <tr>
                   <td colSpan={4} className="text-center py-8 text-slate-500">
                     Laster...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={4} className="text-center py-8 text-red-400">
+                    Kunne ikke hente standings
                   </td>
                 </tr>
               ) : (

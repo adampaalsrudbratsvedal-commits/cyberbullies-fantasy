@@ -13,10 +13,18 @@ export default function LoginModal({ onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    try {
-      if (tab === 'register') {
+
+    if (tab === 'register') {
+      try {
         await register(username, password, fifaUsername)
+      } catch (e) {
+        const detail = e.response?.data?.detail
+        setError(detail === 'Username taken' ? 'Brukernavnet er allerede tatt' : (detail || 'Registrering feilet'))
+        return
       }
+    }
+
+    try {
       const res = await login(username, password)
       await loginUser(res.data.access_token)
       onClose()

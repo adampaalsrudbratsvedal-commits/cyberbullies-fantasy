@@ -3,14 +3,15 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import LoginModal from './LoginModal'
 
-const links = [
-  { to: '/', label: 'Forside' },
-  { to: '/stats', label: 'Stats' },
-  { to: '/historikk', label: 'Ligahistorie' },
-]
-
 export default function Navbar() {
   const { user, logout } = useAuth()
+
+  const links = [
+    { to: '/', label: 'Forside' },
+    { to: '/stats', label: 'Stats' },
+    { to: '/historikk', label: 'Ligahistorie' },
+    ...(user?.is_admin ? [{ to: '/admin', label: 'Admin' }] : []),
+  ]
   const [showLogin, setShowLogin] = useState(false)
   const location = useLocation()
 
