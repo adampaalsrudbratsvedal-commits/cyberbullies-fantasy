@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import httpx
 
 from ..config import settings
+from ..models.fifa_token import FifaToken
 
 PINGONE_TOKEN_URL = (
     "https://auth.pingone.eu/3f85e2e1-0232-4f84-9da8-bba9279f1a23/as/token"
@@ -35,7 +36,6 @@ class TokenManager:
                 pass
 
     def _load_db(self, db) -> bool:
-        from ..models.fifa_token import FifaToken
         row = db.query(FifaToken).first()
         if row and row.fp_user:
             self._access_token = row.access_token or ""
@@ -46,7 +46,6 @@ class TokenManager:
         return False
 
     def _save_db(self, db):
-        from ..models.fifa_token import FifaToken
         row = db.query(FifaToken).first()
         if not row:
             row = FifaToken()

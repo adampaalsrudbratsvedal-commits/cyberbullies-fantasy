@@ -1,37 +1,22 @@
 import { useEffect, useState } from 'react'
 import { getHistory } from '../api'
 
-const MOCK_HISTORY = {
-  1: [
-    { username: 'KalkunBlaster', round_points: 78, overall_points: 78 },
-    { username: 'Apb03', round_points: 65, overall_points: 65 },
-    { username: 'Odin67', round_points: 54, overall_points: 54 },
-  ],
-  2: [
-    { username: 'Apb03', round_points: 82, overall_points: 147 },
-    { username: 'KalkunBlaster', round_points: 61, overall_points: 139 },
-    { username: 'Odin67', round_points: 70, overall_points: 124 },
-  ],
-}
-
 export default function History() {
   const [history, setHistory] = useState({})
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     getHistory()
-      .then((r) => {
-        if (Object.keys(r.data).length) setHistory(r.data)
-        else setHistory(MOCK_HISTORY)
-      })
-      .catch(() => setHistory(MOCK_HISTORY))
+      .then((r) => setHistory(r.data))
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [])
 
   const rounds = Object.keys(history).map(Number).sort((a, b) => a - b)
 
   const allPlayers = rounds.length
-    ? [...new Set(history[rounds[0]].map((r) => r.username))]
+    ? [...new Set(rounds.flatMap((r) => history[r].map((e) => e.username)))]
     : []
 
   return (
@@ -40,6 +25,8 @@ export default function History() {
 
       {loading ? (
         <p className="text-slate-500">Laster...</p>
+      ) : error ? (
+        <p className="text-red-400">Kunne ikke hente historikk fra serveren.</p>
       ) : rounds.length === 0 ? (
         <p className="text-slate-500">Ingen historikk ennå — VM har ikke startet.</p>
       ) : (
