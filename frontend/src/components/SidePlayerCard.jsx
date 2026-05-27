@@ -1,15 +1,3 @@
-// SidePlayerCard.jsx — Vertical highlight card used on the right rail of
-// the Forside (Home) layout. One of three roles:
-//
-//   kind="leader"  Adam · 1247 totalt · gold accent
-//   kind="round"   Markus · +124 i runde 4 · sky-blue accent
-//   kind="last"    Even · 947 totalt, −300 fra leder · rose accent
-//
-// Receives a player from the standings array plus context to compute
-// secondary values (round number, leader's overall for the "from leader"
-// gap on the last-place card).
-
-import Avatar from './Avatar'
 import { TH } from '../lib/theme'
 
 export default function SidePlayerCard({ kind, player, roundNo, leaderOverall }) {
@@ -20,7 +8,7 @@ export default function SidePlayerCard({ kind, player, roundNo, leaderOverall })
       label: 'LEDER',
       color: TH.gold,
       soft: TH.goldSoft,
-      icon: '👑',
+      image: '/trophy.png',
       bigValue: player.overallPoints ?? '—',
       bigSub: 'POENG · TOTALT',
       bigColor: TH.accent,
@@ -33,7 +21,7 @@ export default function SidePlayerCard({ kind, player, roundNo, leaderOverall })
       label: `RUNDEMESTER · R${roundNo ?? ''}`.trim(),
       color: TH.info,
       soft: TH.infoSoft,
-      icon: '🎯',
+      image: '/rundevinner.png',
       bigValue: player.roundPoints != null ? `+${player.roundPoints}` : '—',
       bigSub: `POENG · RUNDE ${roundNo ?? ''}`.trim(),
       bigColor: TH.info,
@@ -46,7 +34,7 @@ export default function SidePlayerCard({ kind, player, roundNo, leaderOverall })
       label: 'SISTEPLASS',
       color: TH.warn,
       soft: TH.warnSoft,
-      icon: '🪣',
+      image: '/sisteplass.jpg',
       bigValue: player.overallPoints ?? '—',
       bigSub: 'POENG · TOTALT',
       bigColor: TH.text,
@@ -72,23 +60,22 @@ export default function SidePlayerCard({ kind, player, roundNo, leaderOverall })
         className="flex flex-col gap-3.5 flex-1 p-4 px-[18px]"
         style={{ background: cfg.wash }}
       >
-        {/* Label pill */}
-        <div
-          className="self-start inline-flex items-center gap-1.5 rounded-full pl-2 pr-2.5 py-1"
-          style={{ background: cfg.soft, border: `1px solid ${cfg.color}33` }}
+        {/* Label */}
+        <span
+          className="font-mono font-semibold uppercase"
+          style={{ fontSize: 9.5, color: cfg.color, letterSpacing: '0.14em' }}
         >
-          <span style={{ fontSize: 11 }}>{cfg.icon}</span>
-          <span
-            className="font-mono font-semibold uppercase"
-            style={{ fontSize: 9.5, color: cfg.color, letterSpacing: '0.14em' }}
-          >
-            {cfg.label}
-          </span>
-        </div>
+          {cfg.label}
+        </span>
 
-        {/* Identity */}
+        {/* Identity + image */}
         <div className="flex items-center gap-3">
-          <Avatar name={player.userName ?? '?'} size={48} ring={cfg.color} />
+          <div
+            className="w-14 h-14 rounded-full flex-shrink-0 overflow-hidden"
+            style={{ border: `2px solid ${cfg.color}66`, background: TH.card }}
+          >
+            <img src={cfg.image} alt={cfg.label} className="w-full h-full object-cover" />
+          </div>
           <div className="min-w-0">
             <div
               className="font-bold leading-tight truncate"
@@ -105,12 +92,7 @@ export default function SidePlayerCard({ kind, player, roundNo, leaderOverall })
         <div>
           <div
             className="font-bold tabular-nums"
-            style={{
-              fontSize: 42,
-              lineHeight: 0.95,
-              color: cfg.bigColor,
-              letterSpacing: '-0.04em',
-            }}
+            style={{ fontSize: 42, lineHeight: 0.95, color: cfg.bigColor, letterSpacing: '-0.04em' }}
           >
             {cfg.bigValue}
           </div>
@@ -125,16 +107,10 @@ export default function SidePlayerCard({ kind, player, roundNo, leaderOverall })
         {/* Secondary stat */}
         <div className="h-px mt-0.5" style={{ background: TH.border }} />
         <div className="flex items-baseline justify-between">
-          <span
-            className="font-mono uppercase"
-            style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.12em' }}
-          >
+          <span className="font-mono uppercase" style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.12em' }}>
             {cfg.sideLabel}
           </span>
-          <span
-            className="font-semibold tabular-nums"
-            style={{ fontSize: 17, color: cfg.sideColor, letterSpacing: '-0.02em' }}
-          >
+          <span className="font-semibold tabular-nums" style={{ fontSize: 17, color: cfg.sideColor, letterSpacing: '-0.02em' }}>
             {cfg.sideValue}
           </span>
         </div>

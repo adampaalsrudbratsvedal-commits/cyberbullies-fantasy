@@ -258,9 +258,7 @@ export default function Home() {
               roundNo={roundNo}
               leaderOverall={leader?.overallPoints}
             />
-            {roundWinner && (roundWinner.roundPoints ?? 0) > 0 && (
-              <SidePlayerCard kind="round" player={roundWinner} roundNo={roundNo} />
-            )}
+            <SidePlayerCard kind="round" player={roundWinner} roundNo={roundNo} />
             <SidePlayerCard
               kind="last"
               player={last}
