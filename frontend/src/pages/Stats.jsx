@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getSimulation, getStats, getProbabilityHistory } from '../api'
+import { getSimulation, getProbabilityHistory } from '../api'
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 const PLAYER_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#a855f7', '#06b6d4']
@@ -63,7 +63,6 @@ export default function Stats() {
   const [sim, setSim] = useState(null)
   const [simError, setSimError] = useState(false)
   const [simLoading, setSimLoading] = useState(true)
-  const [stats, setStats] = useState(null)
   const [probHistory, setProbHistory] = useState(null)
 
   useEffect(() => {
@@ -72,9 +71,6 @@ export default function Stats() {
       .then((r) => setSim(r.data))
       .catch(() => setSimError(true))
       .finally(() => setSimLoading(false))
-    getStats()
-      .then((r) => setStats(r.data))
-      .catch(() => setStats({ most_round_wins: [], most_round_losses: [] }))
     getProbabilityHistory()
       .then((r) => setProbHistory(r.data))
       .catch(() => {})
@@ -141,43 +137,6 @@ export default function Stats() {
         <ProbChart history={probHistory} valueKey="last_probability" title="Sisteplasssannsynlighet per runde" />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <section>
-          <h2 className="text-slate-300 font-semibold mb-3 uppercase text-xs tracking-widest">
-            Flest rundeseiere
-          </h2>
-          <div className="bg-slate-800 rounded-lg border border-slate-700 divide-y divide-slate-700">
-            {stats?.most_round_wins.length ? (
-              stats.most_round_wins.map((r) => (
-                <div key={r.username} className="px-4 py-3 flex justify-between">
-                  <span className="text-white text-sm">{r.username}</span>
-                  <span className="text-green-400 font-bold">{r.wins}</span>
-                </div>
-              ))
-            ) : (
-              <div className="px-4 py-4 text-slate-500 text-sm text-center">Ingen data ennå</div>
-            )}
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-slate-300 font-semibold mb-3 uppercase text-xs tracking-widest">
-            Flest rundetap
-          </h2>
-          <div className="bg-slate-800 rounded-lg border border-slate-700 divide-y divide-slate-700">
-            {stats?.most_round_losses.length ? (
-              stats.most_round_losses.map((r) => (
-                <div key={r.username} className="px-4 py-3 flex justify-between">
-                  <span className="text-white text-sm">{r.username}</span>
-                  <span className="text-red-400 font-bold">{r.losses}</span>
-                </div>
-              ))
-            ) : (
-              <div className="px-4 py-4 text-slate-500 text-sm text-center">Ingen data ennå</div>
-            )}
-          </div>
-        </section>
-      </div>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import traceback
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
@@ -16,5 +17,8 @@ def require_admin(current_user: User = Depends(get_current_user)):
 
 @router.post("/sync")
 async def trigger_sync(db: Session = Depends(get_db), _: User = Depends(require_admin)):
-    result = await sync_league(db)
-    return result
+    try:
+        result = await sync_league(db)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}\n{traceback.format_exc()}")

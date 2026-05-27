@@ -22,8 +22,8 @@ export default function Admin() {
         message: `Synkronisert! ${d.synced} rader oppdatert. Runde ${d.rounds_played}, ${d.players_found} spillere funnet. Snapshot lagret: ${d.snapshot_saved ? 'ja' : 'nei'}.`,
       })
     } catch (e) {
-      const detail = e.response?.data?.detail || 'Noe gikk galt'
-      setStatus({ ok: false, message: detail })
+      const detail = e.response?.data?.detail || e.response?.data || e.message || 'Noe gikk galt'
+      setStatus({ ok: false, message: typeof detail === 'object' ? JSON.stringify(detail) : detail })
     } finally {
       setSyncing(false)
     }
