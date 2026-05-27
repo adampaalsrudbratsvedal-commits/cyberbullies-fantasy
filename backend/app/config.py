@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     fifa_base_url: str = "https://play.fifa.com/api/en/fantasy"
     fifa_sid: str = ""
     fifa_fp_user: str = ""
+    fifa_refresh_token: str = ""
 
     league_name: str = "Cyberbullies"
     monte_carlo_mean: float = 60.0
