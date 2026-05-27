@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 from .config import settings
-from .database import engine, Base
+from .database import engine, Base, get_db
 from .routers import league, auth, admin
 
 try:
@@ -27,3 +29,12 @@ app.include_router(admin.router)
 @app.get("/")
 def root():
     return {"status": "ok", "league": "Cyberbullies Fantasy"}
+
+
+@app.get("/api/health")
+def health(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        return {"db": "ok"}
+    except Exception as e:
+        return {"db": "error", "message": str(e), "type": type(e).__name__}
