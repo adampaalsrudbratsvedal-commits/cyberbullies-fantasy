@@ -132,14 +132,14 @@ export default function Home() {
             </div>
 
             <div
-              className="rounded-2xl overflow-hidden"
+              className="rounded-2xl overflow-x-auto"
               style={{ background: TH.elev, border: `1px solid ${TH.border}` }}
             >
               {/* Header row */}
               <div
-                className="grid items-center font-mono uppercase px-6 py-3"
+                className="grid items-center font-mono uppercase px-3 sm:px-6 py-3 min-w-[320px]"
                 style={{
-                  gridTemplateColumns: '52px 1fr 110px 110px',
+                  gridTemplateColumns: '40px 1fr 80px 90px',
                   background: TH.bg,
                   borderBottom: `1px solid ${TH.border}`,
                   fontSize: 10,
@@ -181,9 +181,9 @@ export default function Home() {
                   return (
                     <div
                       key={p.userName}
-                      className="relative grid items-center gap-3 px-6 py-4 tabular-nums"
+                      className="relative grid items-center gap-3 px-3 sm:px-6 py-4 tabular-nums min-w-[320px]"
                       style={{
-                        gridTemplateColumns: '52px 1fr 110px 110px',
+                        gridTemplateColumns: '40px 1fr 80px 90px',
                         borderTop: i > 0 ? `1px solid ${TH.border}` : 'none',
                         background: isLeader
                           ? 'linear-gradient(90deg, rgba(251,191,36,0.07) 0%, transparent 65%)'
