@@ -24,5 +24,6 @@ export const getHistory = () => api.get('/league/history')
 export const getStats = () => api.get('/league/stats')
 export const getSimulation = () => api.get('/league/simulation')
 export const triggerSync = () => api.post('/admin/sync')
+export const getProbabilityHistory = () => api.get('/league/probability-history')
 
 export default api

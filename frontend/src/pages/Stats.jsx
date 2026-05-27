@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { getSimulation, getStats } from '../api'
+import { getSimulation, getStats, getProbabilityHistory } from '../api'
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+
+const PLAYER_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#a855f7', '#06b6d4']
 
 function ProbBar({ value, color }) {
   return (
@@ -17,11 +20,50 @@ function ProbBar({ value, color }) {
   )
 }
 
+function ProbChart({ history, valueKey, title }) {
+  if (!history || Object.keys(history).length === 0) return null
+
+  const rounds = Object.keys(history).map(Number).sort((a, b) => a - b)
+  const players = [...new Set(rounds.flatMap((r) => Object.keys(history[r])))]
+
+  const data = rounds.map((r) => {
+    const point = { round: `R${r}` }
+    players.forEach((p) => {
+      point[p] = parseFloat(((history[r][p]?.[valueKey] ?? 0) * 100).toFixed(1))
+    })
+    return point
+  })
+
+  return (
+    <section>
+      <h2 className="text-slate-300 font-semibold mb-4 uppercase text-xs tracking-widest">{title}</h2>
+      <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={data}>
+            <XAxis dataKey="round" stroke="#64748b" tick={{ fontSize: 12 }} />
+            <YAxis stroke="#64748b" tick={{ fontSize: 12 }} unit="%" domain={[0, 100]} />
+            <Tooltip
+              contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
+              labelStyle={{ color: '#94a3b8' }}
+              formatter={(v) => [`${v}%`]}
+            />
+            <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
+            {players.map((p, i) => (
+              <Line key={p} type="monotone" dataKey={p} stroke={PLAYER_COLORS[i % PLAYER_COLORS.length]} strokeWidth={2} dot={{ r: 4 }} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  )
+}
+
 export default function Stats() {
   const [sim, setSim] = useState(null)
   const [simError, setSimError] = useState(false)
   const [simLoading, setSimLoading] = useState(true)
   const [stats, setStats] = useState(null)
+  const [probHistory, setProbHistory] = useState(null)
 
   useEffect(() => {
     setSimLoading(true)
@@ -32,6 +74,9 @@ export default function Stats() {
     getStats()
       .then((r) => setStats(r.data))
       .catch(() => setStats({ most_round_wins: [], most_round_losses: [] }))
+    getProbabilityHistory()
+      .then((r) => setProbHistory(r.data))
+      .catch(() => {})
   }, [])
 
   const simEntries = sim
@@ -88,6 +133,9 @@ export default function Stats() {
         valueKey="last_probability"
         color="bg-red-500"
       />
+
+      <ProbChart history={probHistory} valueKey="win_probability" title="Vinnersannsynlighet per runde" />
+      <ProbChart history={probHistory} valueKey="last_probability" title="Sisteplasssannsynlighet per runde" />
 
       <div className="grid grid-cols-2 gap-4">
         <section>

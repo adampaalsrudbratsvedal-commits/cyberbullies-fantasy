@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..database import get_db
 from ..models.round_score import RoundScore
+from ..models.probability_snapshot import ProbabilitySnapshot
 from ..services.simulation import run_monte_carlo
 from ..services.fifa_api import fetch_standings
 
@@ -70,3 +71,16 @@ async def get_simulation(db: Session = Depends(get_db)):
 
     rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
     return run_monte_carlo(current_scores, rounds_remaining)
+
+
+@router.get("/probability-history")
+def get_probability_history(db: Session = Depends(get_db)):
+    rows = db.query(ProbabilitySnapshot).order_by(ProbabilitySnapshot.round_id).all()
+    result = {}
+    for r in rows:
+        result.setdefault(r.round_id, {})[r.fifa_username] = {
+            "win_probability": r.win_probability,
+            "last_probability": r.last_probability,
+            "expected_final": r.expected_final,
+        }
+    return result
