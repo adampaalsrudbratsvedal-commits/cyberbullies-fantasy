@@ -78,7 +78,7 @@ export default function Home() {
               className="font-bold"
               style={{ fontSize: 36, letterSpacing: '-0.03em', color: TH.text }}
             >
-              Forside
+              Tabell
             </h1>
             <p className="mt-1" style={{ fontSize: 14, color: TH.muted }}>
               VM 2026 Fantasy Liga

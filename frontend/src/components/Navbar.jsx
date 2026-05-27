@@ -10,7 +10,7 @@ export default function Navbar() {
   const location = useLocation()
 
   const links = [
-    { to: '/', label: 'Forside' },
+    { to: '/', label: 'Tabell' },
     { to: '/stats', label: 'Stats' },
     { to: '/historikk', label: 'Ligahistorie' },
     ...(user?.is_admin ? [{ to: '/admin', label: 'Admin' }] : []),
@@ -28,7 +28,7 @@ export default function Navbar() {
       <nav className="bg-slate-900 border-b border-slate-700">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <span className="text-green-400 font-bold text-lg tracking-wide">Cyberbullies</span>
+            <span className="text-green-400 font-bold text-lg tracking-wide">Fotball VM 2026</span>
             <div className="hidden md:flex gap-2">
               {links.map((l) => (
                 <Link key={l.to} to={l.to} className={linkClass(l.to)}>
