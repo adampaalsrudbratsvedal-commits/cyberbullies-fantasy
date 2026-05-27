@@ -10,7 +10,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <div className="min-h-screen bg-slate-950 text-slate-100">
+        <div className="min-h-screen text-slate-100" style={{ background: '#0a1610' }}>
           <Navbar />
           <main>
             <Routes>
