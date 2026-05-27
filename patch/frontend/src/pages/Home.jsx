@@ -8,7 +8,7 @@
 //   getHistory()    → { [round]: [{ username, ... }] }   (round number only)
 
 import { useEffect, useState } from 'react'
-import { getStandings, getHistory, getLeagueStatus } from '../api'
+import { getStandings, getHistory } from '../api'
 import Pitch from '../components/Pitch'
 import Avatar from '../components/Avatar'
 import SidePlayerCard from '../components/SidePlayerCard'
@@ -19,28 +19,16 @@ const TOTAL_ROUNDS = 64
 export default function Home() {
   const [standings, setStandings] = useState([])
   const [roundNo, setRoundNo] = useState(null)
-  const [lastSynced, setLastSynced] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      getStandings(),
-      getHistory().catch(() => null),
-      getLeagueStatus().catch(() => null),
-    ]).then(([s, h, st]) => {
+    Promise.all([getStandings(), getHistory().catch(() => null)])
+      .then(([s, h]) => {
         setStandings(s.data)
         if (h?.data && Object.keys(h.data).length > 0) {
           const rounds = Object.keys(h.data).map(Number).filter((n) => !Number.isNaN(n))
           if (rounds.length) setRoundNo(Math.max(...rounds))
-        }
-        if (st?.data?.last_synced) {
-          const d = new Date(st.data.last_synced)
-          const dd = String(d.getDate()).padStart(2, '0')
-          const mm = String(d.getMonth() + 1).padStart(2, '0')
-          const hh = String(d.getHours()).padStart(2, '0')
-          const min = String(d.getMinutes()).padStart(2, '0')
-          setLastSynced(`${dd}.${mm} · ${hh}:${min}`)
         }
       })
       .catch(() => setError(true))
@@ -85,31 +73,20 @@ export default function Home() {
               {roundNo != null && ` · Runde ${roundNo} av ${TOTAL_ROUNDS}`}
             </p>
           </div>
-          <div className="hidden sm:flex items-center gap-3">
-            {roundNo != null && (
-              <div
-                className="inline-flex items-center font-mono uppercase rounded-full px-3 py-1.5"
-                style={{
-                  background: TH.card,
-                  border: `1px solid ${TH.border}`,
-                  fontSize: 10.5,
-                  color: TH.muted,
-                  letterSpacing: '0.14em',
-                }}
-              >
-                RUNDE {roundNo} / {TOTAL_ROUNDS}
-              </div>
-            )}
-            {lastSynced && (
-              <div
-                className="inline-flex items-center gap-1.5 font-mono"
-                style={{ fontSize: 11, color: TH.dim }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: TH.accent, display: 'inline-block', flexShrink: 0 }} />
-                SYNK {lastSynced}
-              </div>
-            )}
-          </div>
+          {roundNo != null && (
+            <div
+              className="hidden sm:inline-flex items-center font-mono uppercase rounded-full px-3 py-1.5"
+              style={{
+                background: TH.card,
+                border: `1px solid ${TH.border}`,
+                fontSize: 10.5,
+                color: TH.muted,
+                letterSpacing: '0.14em',
+              }}
+            >
+              RUNDE {roundNo} / {TOTAL_ROUNDS}
+            </div>
+          )}
         </div>
 
         {/* Table left · cards stacked right */}
@@ -281,7 +258,9 @@ export default function Home() {
               roundNo={roundNo}
               leaderOverall={leader?.overallPoints}
             />
-            <SidePlayerCard kind="round" player={roundWinner} roundNo={roundNo} />
+            {roundWinner && (roundWinner.roundPoints ?? 0) > 0 && (
+              <SidePlayerCard kind="round" player={roundWinner} roundNo={roundNo} />
+            )}
             <SidePlayerCard
               kind="last"
               player={last}

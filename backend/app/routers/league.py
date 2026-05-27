@@ -73,6 +73,18 @@ async def get_simulation(db: Session = Depends(get_db)):
     return run_monte_carlo(current_scores, rounds_remaining)
 
 
+@router.get("/status")
+def get_status(db: Session = Depends(get_db)):
+    rounds_played = db.query(func.max(RoundScore.round_id)).scalar() or 0
+    latest_snapshot = (
+        db.query(ProbabilitySnapshot)
+        .order_by(ProbabilitySnapshot.created_at.desc())
+        .first()
+    )
+    last_synced = latest_snapshot.created_at.isoformat() if latest_snapshot and latest_snapshot.created_at else None
+    return {"rounds_played": rounds_played, "last_synced": last_synced}
+
+
 @router.get("/probability-history")
 def get_probability_history(db: Session = Depends(get_db)):
     rows = db.query(ProbabilitySnapshot).order_by(ProbabilitySnapshot.round_id).all()
