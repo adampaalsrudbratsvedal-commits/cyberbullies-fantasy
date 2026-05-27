@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     fifa_fp_user: str = ""
     fifa_refresh_token: str = ""
 
+    cors_origins: list[str] = ["http://localhost:5173"]
+
     league_name: str = "Cyberbullies"
     monte_carlo_mean: float = 60.0
     monte_carlo_std: float = 15.0
