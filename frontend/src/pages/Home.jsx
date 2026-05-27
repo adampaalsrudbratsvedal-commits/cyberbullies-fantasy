@@ -44,15 +44,18 @@ export default function Home() {
   }, [])
 
   const sorted = [...standings].sort(
-    (a, b) => (b.overallPoints ?? 0) - (a.overallPoints ?? 0)
+    (a, b) =>
+      (b.overallPoints ?? 0) - (a.overallPoints ?? 0) ||
+      (a.userName ?? '').localeCompare(b.userName ?? '')
   )
 
   const leader = sorted[0] ?? null
   const last = sorted[sorted.length - 1] ?? null
   const roundWinner = [...standings].sort(
-    (a, b) => (b.roundPoints ?? 0) - (a.roundPoints ?? 0)
+    (a, b) =>
+      (b.roundPoints ?? 0) - (a.roundPoints ?? 0) ||
+      (a.userName ?? '').localeCompare(b.userName ?? '')
   )[0] ?? null
-  const hasRoundData = standings.some((p) => p.roundPoints != null)
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -118,7 +121,7 @@ export default function Home() {
           />
           <PlayerCard
             title="Regjerende rundemester"
-            player={hasRoundData ? roundWinner : null}
+            player={roundWinner}
             accentClass="border-blue-500/40"
             icon="⚡"
           />
