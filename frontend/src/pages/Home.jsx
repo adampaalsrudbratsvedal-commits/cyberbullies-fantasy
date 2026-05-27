@@ -10,7 +10,6 @@
 import { useEffect, useState } from 'react'
 import { getStandings, getHistory } from '../api'
 import Pitch from '../components/Pitch'
-import Avatar from '../components/Avatar'
 import SidePlayerCard from '../components/SidePlayerCard'
 import { TH } from '../lib/theme'
 
@@ -182,11 +181,6 @@ export default function Home() {
                       </span>
 
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <Avatar
-                          name={p.userName ?? '?'}
-                          size={36}
-                          ring={isLeader ? TH.gold : undefined}
-                        />
                         <div className="min-w-0">
                           <div
                             className="font-semibold flex items-center gap-2"
