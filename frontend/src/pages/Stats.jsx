@@ -401,7 +401,7 @@ export default function Stats() {
           <div className="flex flex-col gap-5">
             <Section
               title="Sannsynlighet for seier"
-              subtitle="Hvem ender øverst når R64 er spilt?"
+              subtitle="Who knows ball"
               color={TH.accent}
               entries={winEntries}
               valueKey="win_probability"
