@@ -1,64 +1,335 @@
+// Stats.jsx — Cyberbullies Stats (redesigned).
+//
+// Two sections, each with a top-3 podium on the left and a line chart on
+// the right showing how the probability has evolved over rounds. Same
+// stadium-pitch theme as Forside.
+//
+// Uses the existing API contract from ../api:
+//   getSimulation()         → { [name]: { win_probability, last_probability, expected_final } }
+//   getProbabilityHistory() → { [round]: { [name]: { win_probability, last_probability } } }
+
 import { useEffect, useState } from 'react'
 import { getSimulation, getProbabilityHistory } from '../api'
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import Pitch from '../components/Pitch'
+import Avatar from '../components/Avatar'
+import { TH } from '../lib/theme'
 
-const PLAYER_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#a855f7', '#06b6d4', '#f97316', '#84cc16', '#e11d48', '#0ea5e9', '#8b5cf6', '#14b8a6']
+// ─────────────────────────────────────────────────────────────
+// Subcomponents
+// ─────────────────────────────────────────────────────────────
 
-function ProbBar({ value, color }) {
+function PodiumRow({ name, prob, exp, color, rank }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 bg-slate-700 rounded-full h-2">
+    <div
+      className="relative grid items-center gap-3 rounded-xl px-3.5 py-3 overflow-hidden"
+      style={{
+        gridTemplateColumns: '26px 40px 1fr auto',
+        background: TH.elev,
+        border: `1px solid ${TH.border}`,
+      }}
+    >
+      <div
+        className="absolute left-0 top-0 bottom-0"
+        style={{ width: 3, background: color }}
+      />
+      <span
+        className="font-mono font-semibold tabular-nums"
+        style={{ fontSize: 12, color }}
+      >
+        {String(rank).padStart(2, '0')}
+      </span>
+      <Avatar name={name} size={36} ring={rank === 1 ? color : undefined} />
+      <div className="min-w-0">
         <div
-          className={`h-2 rounded-full transition-all ${color}`}
-          style={{ width: `${(value * 100).toFixed(1)}%` }}
-        />
+          className="font-semibold truncate"
+          style={{ fontSize: 14, color: TH.text, letterSpacing: '-0.01em' }}
+        >
+          {name}
+        </div>
+        <div
+          className="font-mono mt-0.5 uppercase"
+          style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.04em' }}
+        >
+          FORVENTET <span style={{ color: TH.muted }}>{Math.round(exp)}</span> P
+        </div>
       </div>
-      <span className="text-sm w-12 text-right text-slate-300">
-        {(value * 100).toFixed(1)}%
+      <div className="text-right">
+        <div
+          className="font-bold tabular-nums"
+          style={{
+            fontSize: 22,
+            lineHeight: 1,
+            color: rank === 1 ? color : TH.text,
+            letterSpacing: '-0.025em',
+          }}
+        >
+          {(prob * 100).toFixed(1)}%
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProbRow({ name, prob, exp, color, max }) {
+  const pct = max > 0 ? prob / max : 0
+  return (
+    <div
+      className="grid items-center gap-3 px-1 py-2"
+      style={{ gridTemplateColumns: '28px 1fr 52px' }}
+    >
+      <Avatar name={name} size={24} />
+      <div>
+        <div className="flex items-baseline justify-between mb-1.5">
+          <span style={{ fontSize: 12.5, color: TH.text, fontWeight: 500 }}>{name}</span>
+          <span
+            className="font-mono"
+            style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.04em' }}
+          >
+            {Math.round(exp)} p
+          </span>
+        </div>
+        <div
+          className="h-1 rounded-full overflow-hidden"
+          style={{ background: TH.bg }}
+        >
+          <div
+            className="h-full"
+            style={{ width: `${pct * 100}%`, background: color }}
+          />
+        </div>
+      </div>
+      <span
+        className="text-right font-mono font-semibold tabular-nums"
+        style={{ fontSize: 12, color }}
+      >
+        {(prob * 100).toFixed(1)}%
       </span>
     </div>
   )
 }
 
-function ProbChart({ history, valueKey, title }) {
-  if (!history || Object.keys(history).length === 0) return null
+function ProbLineChart({ data, players, colors, height = 200 }) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <LineChart data={data} margin={{ top: 6, right: 12, left: -10, bottom: 0 }}>
+        <CartesianGrid stroke={TH.border} strokeDasharray="2 3" vertical={false} />
+        <XAxis
+          dataKey="round"
+          stroke={TH.dim}
+          tick={{ fontSize: 11, fontFamily: 'JetBrains Mono, ui-monospace, monospace' }}
+          tickLine={false}
+          axisLine={{ stroke: TH.border }}
+        />
+        <YAxis
+          stroke={TH.dim}
+          tick={{ fontSize: 11, fontFamily: 'JetBrains Mono, ui-monospace, monospace' }}
+          unit="%"
+          domain={[0, 'dataMax + 5']}
+          tickLine={false}
+          axisLine={false}
+        />
+        <Tooltip
+          contentStyle={{
+            background: TH.elev,
+            border: `1px solid ${TH.border}`,
+            borderRadius: 8,
+            color: TH.text,
+            fontSize: 12,
+          }}
+          labelStyle={{ color: TH.muted, fontFamily: 'JetBrains Mono, ui-monospace, monospace' }}
+          formatter={(v) => [`${v}%`]}
+          cursor={{ stroke: TH.border }}
+        />
+        {players.map((name, i) => (
+          <Line
+            key={name}
+            type="monotone"
+            dataKey={name}
+            stroke={colors[i] || TH.muted}
+            strokeWidth={2}
+            dot={{ r: 3, fill: colors[i] || TH.muted, strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
+            connectNulls={false}
+            isAnimationActive={false}
+          />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
+  )
+}
 
-  const rounds = Object.keys(history).map(Number).sort((a, b) => a - b)
-  const players = [...new Set(rounds.flatMap((r) => Object.keys(history[r])))]
+function Section({
+  title,
+  subtitle,
+  color,
+  entries,        // [{ name, value, exp }] sorted desc
+  valueKey,       // 'win_probability' | 'last_probability'
+  probHistory,
+  scenarioCount,
+  mode,           // 'win' | 'last'
+}) {
+  const top3 = entries.slice(0, 3)
+  const rest = entries.slice(3)
+  const max = entries[0]?.value ?? 0
+  const colors =
+    mode === 'win'
+      ? [TH.accent, TH.gold, TH.info, TH.muted]
+      : [TH.warn, '#fda4af', TH.gold, TH.muted]
 
-  const data = rounds.map((r) => {
+  // Build chart data — top 4 plotted; one row per round.
+  const top4Names = entries.slice(0, 4).map((e) => e.name)
+  const rounds = probHistory
+    ? Object.keys(probHistory).map(Number).sort((a, b) => a - b)
+    : []
+  const chartData = rounds.map((r) => {
     const point = { round: `R${r}` }
-    players.forEach((p) => {
-      const val = history[r][p]?.[valueKey]
-      point[p] = val != null ? parseFloat((val * 100).toFixed(1)) : null
+    top4Names.forEach((n) => {
+      const v = probHistory?.[r]?.[n]?.[valueKey]
+      point[n] = v != null ? parseFloat((v * 100).toFixed(1)) : null
     })
     return point
   })
+  const lastRound = rounds.length ? rounds[rounds.length - 1] : null
 
   return (
-    <section>
-      <h2 className="text-slate-300 font-semibold mb-4 uppercase text-xs tracking-widest">{title}</h2>
-      <div className="bg-slate-800 rounded-lg border border-slate-700 p-4">
-        <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={data}>
-            <XAxis dataKey="round" stroke="#64748b" tick={{ fontSize: 12 }} />
-            <YAxis stroke="#64748b" tick={{ fontSize: 12 }} unit="%" domain={[0, 100]} />
-            <Tooltip
-              contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
-              labelStyle={{ color: '#94a3b8' }}
-              formatter={(v) => [`${v}%`]}
+    <section
+      className="rounded-2xl overflow-hidden flex flex-col"
+      style={{ background: TH.elev, border: `1px solid ${TH.border}` }}
+    >
+      <div style={{ height: 3, background: color }} />
+      <div className="flex items-end justify-between px-5 pt-4">
+        <div>
+          <div
+            className="font-mono font-semibold uppercase mb-1.5"
+            style={{ fontSize: 10, color, letterSpacing: '0.16em' }}
+          >
+            SIMULERING · {scenarioCount}
+          </div>
+          <h2
+            className="font-bold"
+            style={{ fontSize: 22, color: TH.text, letterSpacing: '-0.025em' }}
+          >
+            {title}
+          </h2>
+          {subtitle && (
+            <p className="mt-1" style={{ fontSize: 12, color: TH.muted }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+        <span
+          className="font-mono uppercase"
+          style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.12em' }}
+        >
+          {lastRound != null ? `R1 → R${lastRound}` : ''}
+        </span>
+      </div>
+
+      <div className="grid gap-5 p-5 lg:grid-cols-[320px_1fr]">
+        {/* Top 3 podium + rest */}
+        <div className="flex flex-col gap-2">
+          {top3.map((e, i) => (
+            <PodiumRow
+              key={e.name}
+              name={e.name}
+              prob={e.value}
+              exp={e.exp}
+              color={colors[i]}
+              rank={i + 1}
             />
-            <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
-            {players.map((p, i) => (
-              <Line key={p} type="monotone" dataKey={p} stroke={PLAYER_COLORS[i % PLAYER_COLORS.length]} strokeWidth={2} dot={{ r: 4 }} connectNulls={false} />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+          ))}
+          {rest.length > 0 && (
+            <div
+              className="mt-1.5 pt-2 px-1"
+              style={{ borderTop: `1px solid ${TH.border}` }}
+            >
+              <div
+                className="font-mono uppercase mb-1 px-1"
+                style={{ fontSize: 9.5, color: TH.dim, letterSpacing: '0.14em' }}
+              >
+                ØVRIGE
+              </div>
+              {rest.map((e) => (
+                <ProbRow
+                  key={e.name}
+                  name={e.name}
+                  prob={e.value}
+                  exp={e.exp}
+                  color={TH.muted}
+                  max={max}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Chart */}
+        <div className="flex flex-col gap-2.5 min-w-0">
+          <div
+            className="font-mono font-semibold uppercase"
+            style={{ fontSize: 10.5, color: TH.muted, letterSpacing: '0.16em' }}
+          >
+            UTVIKLING
+          </div>
+          <div
+            className="rounded-xl p-2.5"
+            style={{ background: TH.bg, border: `1px solid ${TH.border}` }}
+          >
+            {chartData.length > 0 ? (
+              <ProbLineChart data={chartData} players={top4Names} colors={colors} height={220} />
+            ) : (
+              <div
+                className="text-center py-12"
+                style={{ color: TH.dim, fontSize: 13 }}
+              >
+                Ingen historikk ennå
+              </div>
+            )}
+          </div>
+          {/* Legend */}
+          <div className="flex flex-wrap gap-x-4 gap-y-2 px-1">
+            {top4Names.map((n, i) => {
+              const lastPct = chartData[chartData.length - 1]?.[n]
+              return (
+                <span
+                  key={n}
+                  className="inline-flex items-center gap-1.5"
+                  style={{ fontSize: 11.5, color: TH.muted }}
+                >
+                  <span
+                    style={{ width: 14, height: 2, background: colors[i], borderRadius: 1 }}
+                  />
+                  <span>{n}</span>
+                  {lastPct != null && (
+                    <span
+                      className="font-mono tabular-nums"
+                      style={{ fontSize: 10, color: colors[i], letterSpacing: '0.04em' }}
+                    >
+                      {lastPct}%
+                    </span>
+                  )}
+                </span>
+              )
+            })}
+          </div>
+        </div>
       </div>
     </section>
   )
 }
 
+// ─────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────
 export default function Stats() {
   const [sim, setSim] = useState(null)
   const [simError, setSimError] = useState(false)
@@ -76,67 +347,81 @@ export default function Stats() {
       .catch(() => {})
   }, [])
 
-  const simEntries = sim
-    ? Object.entries(sim).sort((a, b) => b[1].win_probability - a[1].win_probability)
+  const winEntries = sim
+    ? Object.entries(sim)
+        .map(([name, d]) => ({ name, value: d.win_probability, exp: d.expected_final }))
+        .sort((a, b) => b.value - a.value)
+    : []
+  const lastEntries = sim
+    ? Object.entries(sim)
+        .map(([name, d]) => ({ name, value: d.last_probability, exp: d.expected_final }))
+        .sort((a, b) => b.value - a.value)
     : []
 
-  const SimSection = ({ title, entries, valueKey, color }) => (
-    <section>
-      <h2 className="text-slate-300 font-semibold mb-4 uppercase text-xs tracking-widest">
-        {title}
-      </h2>
-      <div className="bg-slate-800 rounded-lg border border-slate-700 divide-y divide-slate-700">
+  const rounds = probHistory ? Object.keys(probHistory).length : 0
+  const scenarioCount = '5K SCENARIER' // backend constant; surface only if your sim returns it
+
+  return (
+    <>
+      <Pitch />
+
+      <div
+        className="max-w-7xl mx-auto px-4 py-8"
+        style={{ color: TH.text, fontFamily: '"Space Grotesk", system-ui, sans-serif' }}
+      >
+        {/* Page header */}
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <h1
+              className="font-bold"
+              style={{ fontSize: 36, letterSpacing: '-0.03em', color: TH.text }}
+            >
+              Stats
+            </h1>
+            <p className="mt-1" style={{ fontSize: 14, color: TH.muted }}>
+              Monte Carlo-simulering av sluttstillingen
+              {rounds > 0 && ` · Runde ${rounds}`}
+            </p>
+          </div>
+        </div>
+
         {simLoading ? (
-          <div className="px-5 py-6 text-slate-500 text-sm text-center">
+          <div className="text-center py-16" style={{ color: TH.dim }}>
             Beregner simuleringer…
           </div>
         ) : simError ? (
-          <div className="px-5 py-6 text-red-400 text-sm text-center">
-            Kunne ikke hente simuleringsdata fra serveren
+          <div className="text-center py-16" style={{ color: TH.warn }}>
+            Kunne ikke hente simuleringsdata
+          </div>
+        ) : winEntries.length === 0 ? (
+          <div className="text-center py-16" style={{ color: TH.dim }}>
+            Ingen simulering tilgjengelig ennå
           </div>
         ) : (
-          entries.map(([name, data]) => (
-            <div key={name} className="px-5 py-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-medium text-white">{name}</span>
-                {valueKey === 'win_probability' && (
-                  <span className="text-slate-400 text-xs">
-                    Forventet: {data.expected_final.toFixed(0)} p
-                  </span>
-                )}
-              </div>
-              <ProbBar value={data[valueKey]} color={color} />
-            </div>
-          ))
+          <div className="flex flex-col gap-5">
+            <Section
+              title="Sannsynlighet for seier"
+              subtitle="Hvem ender øverst når R64 er spilt?"
+              color={TH.accent}
+              entries={winEntries}
+              valueKey="win_probability"
+              probHistory={probHistory}
+              scenarioCount={scenarioCount}
+              mode="win"
+            />
+            <Section
+              title="Sannsynlighet for sisteplass"
+              subtitle="Hvem stryker med bunnplassen?"
+              color={TH.warn}
+              entries={lastEntries}
+              valueKey="last_probability"
+              probHistory={probHistory}
+              scenarioCount={scenarioCount}
+              mode="last"
+            />
+          </div>
         )}
       </div>
-    </section>
-  )
-
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-      <h1 className="text-2xl font-bold text-white">Stats</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <SimSection
-          title="Sannsynlighet for seier"
-          entries={simEntries.slice(0, 5)}
-          valueKey="win_probability"
-          color="bg-green-500"
-        />
-        <ProbChart history={probHistory} valueKey="win_probability" title="Vinnersannsynlighet per runde" />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <SimSection
-          title="Sannsynlighet for sisteplass"
-          entries={[...simEntries].sort((a, b) => b[1].last_probability - a[1].last_probability).slice(0, 5)}
-          valueKey="last_probability"
-          color="bg-red-500"
-        />
-        <ProbChart history={probHistory} valueKey="last_probability" title="Sisteplasssannsynlighet per runde" />
-      </div>
-
-    </div>
+    </>
   )
 }
