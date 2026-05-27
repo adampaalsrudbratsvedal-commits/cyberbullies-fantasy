@@ -8,7 +8,7 @@ from ..services.fifa_api import fetch_standings
 
 router = APIRouter(prefix="/api/league", tags=["league"])
 
-TOTAL_ROUNDS = 7
+TOTAL_ROUNDS = 8
 
 
 @router.get("/standings")
