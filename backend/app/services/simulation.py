@@ -23,10 +23,6 @@ def run_monte_carlo(
     players = list(current_scores.keys())
     scores = np.array([current_scores[p] for p in players], dtype=float)
 
-    simulated = scores[:, None] + np.random.normal(
-        mean, std, size=(len(players), n)
-    ).cumsum(axis=0) if rounds_remaining > 0 else scores[:, None] * np.ones((len(players), n))
-
     if rounds_remaining > 0:
         future = np.random.normal(mean, std, size=(len(players), rounds_remaining, n))
         final_scores = scores[:, None] + future.sum(axis=1)

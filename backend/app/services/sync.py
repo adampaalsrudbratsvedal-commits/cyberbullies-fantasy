@@ -4,7 +4,7 @@ from ..models.round_score import RoundScore
 
 
 async def sync_league(db: Session) -> int:
-    ranks = await fetch_standings()
+    ranks = await fetch_standings(db)
     updated = 0
     for rank in ranks:
         if rank.get("roundId") is None:
