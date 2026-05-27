@@ -422,6 +422,58 @@ export default function Stats() {
           </div>
         )}
       </div>
+
+      {/* Størst tiss */}
+      <div className="max-w-sm mx-auto mt-8">
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ background: TH.elev, border: `1px solid ${TH.border}` }}
+        >
+          <div style={{ height: 3, background: TH.accent }} />
+          <div className="px-5 py-4">
+            <h2
+              className="font-bold mb-0.5"
+              style={{ fontSize: 18, color: TH.text, letterSpacing: '-0.01em' }}
+            >
+              Størst tiss
+            </h2>
+            <p
+              className="font-mono uppercase mb-4"
+              style={{ fontSize: 9.5, color: TH.dim, letterSpacing: '0.12em' }}
+            >
+              Tall hentet fra Helsenorge
+            </p>
+            {[
+              { name: 'Apb03', cm: '21,3 cm' },
+              { name: 'Odin67', cm: '18,2 cm' },
+              { name: 'KalkunBlaster', cm: '15,0 cm' },
+              { name: 'LeonC', cm: '12,3 cm' },
+            ].map((p, i) => (
+              <div
+                key={p.name}
+                className="flex items-center justify-between py-2.5"
+                style={{ borderTop: i > 0 ? `1px solid ${TH.border}` : 'none' }}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className="font-mono font-semibold w-6 text-right"
+                    style={{ fontSize: 12, color: i === 0 ? TH.gold : TH.dim }}
+                  >
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <span style={{ fontSize: 14, color: TH.text, fontWeight: 500 }}>{p.name}</span>
+                </div>
+                <span
+                  className="font-mono font-bold"
+                  style={{ fontSize: 14, color: i === 0 ? TH.accent : TH.muted }}
+                >
+                  {p.cm}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </>
   )
 }
