@@ -1,12 +1,14 @@
 export default function Pitch() {
   return (
     <div aria-hidden className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-      {/* Mowed grass stripes — more visible contrast */}
+      {/* Base */}
+      <div className="absolute inset-0" style={{ background: '#0a1a10' }} />
+      {/* Mowed grass stripes — high contrast */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            'repeating-linear-gradient(180deg, #0d2018 0px, #0d2018 60px, #0a1912 60px, #0a1912 120px)',
+            'repeating-linear-gradient(180deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 60px, transparent 60px, transparent 120px)',
         }}
       />
 
@@ -32,7 +34,7 @@ export default function Pitch() {
         className="absolute inset-0 w-full h-full"
         preserveAspectRatio="xMidYMid slice"
         viewBox="0 0 1440 900"
-        style={{ opacity: 0.12 }}
+        style={{ opacity: 0.22 }}
       >
         {/* Centre vertical line */}
         <line x1="720" y1="0" x2="720" y2="900" stroke="#5eea93" strokeWidth="1.5" />
