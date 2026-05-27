@@ -16,5 +16,5 @@ def require_admin(current_user: User = Depends(get_current_user)):
 
 @router.post("/sync")
 async def trigger_sync(db: Session = Depends(get_db), _: User = Depends(require_admin)):
-    updated = await sync_league(db)
-    return {"synced": updated}
+    result = await sync_league(db)
+    return result

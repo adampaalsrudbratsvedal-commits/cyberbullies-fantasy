@@ -16,7 +16,11 @@ export default function Admin() {
     setStatus(null)
     try {
       const r = await triggerSync()
-      setStatus({ ok: true, message: `Synkronisert! ${r.data.synced} rader oppdatert.` })
+      const d = r.data
+      setStatus({
+        ok: true,
+        message: `Synkronisert! ${d.synced} rader oppdatert. Runde ${d.rounds_played}, ${d.players_found} spillere funnet. Snapshot lagret: ${d.snapshot_saved ? 'ja' : 'nei'}.`,
+      })
     } catch (e) {
       const detail = e.response?.data?.detail || 'Noe gikk galt'
       setStatus({ ok: false, message: detail })

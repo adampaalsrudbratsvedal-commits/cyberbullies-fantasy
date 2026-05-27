@@ -8,7 +8,7 @@ from ..models.probability_snapshot import ProbabilitySnapshot
 TOTAL_ROUNDS = 8
 
 
-async def sync_league(db: Session) -> int:
+async def sync_league(db: Session) -> dict:
     ranks = await fetch_standings(db)
     updated = 0
     for rank in ranks:
@@ -46,6 +46,12 @@ async def sync_league(db: Session) -> int:
     )
     if latest:
         current_scores = {r.fifa_username: r.points or 0 for r in latest}
+    else:
+        # Pre-tournament: no round scores yet, use live standings (already fetched)
+        current_scores = {r["userName"]: r.get("overallPoints") or 0 for r in ranks if r.get("userName")}
+
+    snapshot_saved = False
+    if current_scores:
         rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
         sim = run_monte_carlo(current_scores, rounds_remaining)
 
@@ -60,5 +66,12 @@ async def sync_league(db: Session) -> int:
                 expected_final=probs["expected_final"],
             ))
         db.commit()
+        snapshot_saved = True
 
-    return updated
+    return {
+        "synced": updated,
+        "rounds_played": rounds_played,
+        "players_found": len(current_scores),
+        "snapshot_saved": snapshot_saved,
+        "ranks_raw": len(ranks),
+    }
