@@ -29,7 +29,8 @@ function ProbChart({ history, valueKey, title }) {
   const data = rounds.map((r) => {
     const point = { round: `R${r}` }
     players.forEach((p) => {
-      point[p] = parseFloat(((history[r][p]?.[valueKey] ?? 0) * 100).toFixed(1))
+      const val = history[r][p]?.[valueKey]
+      point[p] = val != null ? parseFloat((val * 100).toFixed(1)) : null
     })
     return point
   })
@@ -49,7 +50,7 @@ function ProbChart({ history, valueKey, title }) {
             />
             <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
             {players.map((p, i) => (
-              <Line key={p} type="monotone" dataKey={p} stroke={PLAYER_COLORS[i % PLAYER_COLORS.length]} strokeWidth={2} dot={{ r: 4 }} />
+              <Line key={p} type="monotone" dataKey={p} stroke={PLAYER_COLORS[i % PLAYER_COLORS.length]} strokeWidth={2} dot={{ r: 4 }} connectNulls={false} />
             ))}
           </LineChart>
         </ResponsiveContainer>
