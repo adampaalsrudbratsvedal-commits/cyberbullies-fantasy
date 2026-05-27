@@ -11,27 +11,29 @@ def _headers() -> dict:
     }
 
 
-async def _get(url: str) -> dict:
+async def _get(url: str, db=None) -> dict:
+    await token_manager.ensure_fresh(db)
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, headers=_headers(), timeout=15)
         if resp.status_code == 401:
-            refreshed = await token_manager.refresh()
+            refreshed = await token_manager.refresh(db)
             if refreshed:
                 resp = await client.get(url, headers=_headers(), timeout=15)
         resp.raise_for_status()
         return resp.json()
 
 
-async def fetch_standings() -> list[dict]:
+async def fetch_standings(db=None) -> list[dict]:
     data = await _get(
-        f"{settings.fifa_base_url}/ranking/league/{settings.fifa_league_id}?limit=50"
+        f"{settings.fifa_base_url}/ranking/league/{settings.fifa_league_id}?limit=50",
+        db,
     )
     return data["success"]["ranks"]
 
 
-async def fetch_rounds() -> list[dict]:
-    return await _get(f"{settings.fifa_base_url}/rounds.json")
+async def fetch_rounds(db=None) -> list[dict]:
+    return await _get(f"{settings.fifa_base_url}/rounds.json", db)
 
 
-async def fetch_gamebar(round_id: int) -> dict:
-    return await _get(f"{settings.fifa_base_url}/gamebar?roundId={round_id}")
+async def fetch_gamebar(round_id: int, db=None) -> dict:
+    return await _get(f"{settings.fifa_base_url}/gamebar?roundId={round_id}", db)

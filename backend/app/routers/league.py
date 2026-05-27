@@ -12,8 +12,8 @@ TOTAL_ROUNDS = 7
 
 
 @router.get("/standings")
-async def get_standings():
-    ranks = await fetch_standings()
+async def get_standings(db: Session = Depends(get_db)):
+    ranks = await fetch_standings(db)
     return ranks
 
 
@@ -61,7 +61,7 @@ async def get_simulation(db: Session = Depends(get_db)):
         .all()
     )
     if not latest:
-        ranks = await fetch_standings()
+        ranks = await fetch_standings(db)
         current_scores = {r["userName"]: r.get("overallPoints") or 0 for r in ranks}
         rounds_played = 0
     else:
