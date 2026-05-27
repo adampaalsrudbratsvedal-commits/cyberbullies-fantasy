@@ -2,7 +2,17 @@
 
 body {
   margin: 0;
-  background: #091810;
+  background-color: #091810;
+  background-image:
+    repeating-linear-gradient(
+      180deg,
+      rgba(255,255,255,0.045) 0px,
+      rgba(255,255,255,0.045) 80px,
+      transparent 80px,
+      transparent 160px
+    ),
+    radial-gradient(ellipse 140% 50% at 50% 0%, rgba(94,234,147,0.09) 0%, transparent 55%);
+  background-attachment: fixed;
   color: #e2e8f0;
   font-family: system-ui, sans-serif;
 }
