@@ -1,49 +1,38 @@
+// Pitch.jsx — Football pitch background.
+// Renders fixed-positioned, behind all content (-z-10), so the page chrome
+// (navbar, App background) sits on top. Subtle mowed-grass diagonal stripes
+// + a soft stadium-light wash and a faint centre line / circle.
+
 export default function Pitch() {
   return (
     <div aria-hidden className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-
-      {/* Horizontal grass stripes — clearly visible alternating bands */}
+      {/* Mowed stripes */}
       <div
         className="absolute inset-0"
         style={{
-          background: 'repeating-linear-gradient(180deg, #0d2318 0px, #0d2318 80px, #091810 80px, #091810 160px)',
+          background:
+            'repeating-linear-gradient(78deg, #0a1610 0px, #0a1610 100px, #0d1d15 100px, #0d1d15 200px)',
         }}
       />
-
-      {/* Stadium floodlight glow from top centre */}
+      {/* Stadium light wash */}
       <div
         className="absolute inset-0"
         style={{
-          background: 'radial-gradient(ellipse 140% 50% at 50% 0%, rgba(94,234,147,0.08) 0%, transparent 55%)',
+          background:
+            'radial-gradient(120% 80% at 50% -10%, rgba(94,234,147,0.06) 0%, transparent 55%), linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.35) 100%)',
         }}
       />
-
-      {/* Pitch lines */}
+      {/* Faint centre line + circle */}
       <svg
         className="absolute inset-0 w-full h-full"
         preserveAspectRatio="xMidYMid slice"
         viewBox="0 0 1440 900"
-        style={{ opacity: 0.18 }}
+        style={{ opacity: 0.05 }}
       >
-        {/* Halfway line */}
-        <line x1="720" y1="0" x2="720" y2="900" stroke="#5eea93" strokeWidth="2" />
-        {/* Centre circle */}
-        <circle cx="720" cy="450" r="160" stroke="#5eea93" strokeWidth="2" fill="none" />
-        {/* Centre dot */}
-        <circle cx="720" cy="450" r="5" fill="#5eea93" />
-        {/* Left penalty box */}
-        <rect x="0" y="270" width="200" height="360" stroke="#5eea93" strokeWidth="2" fill="none" />
-        {/* Right penalty box */}
-        <rect x="1240" y="270" width="200" height="360" stroke="#5eea93" strokeWidth="2" fill="none" />
-        {/* Outer boundary */}
-        <rect x="20" y="30" width="1400" height="840" stroke="#5eea93" strokeWidth="2" fill="none" />
+        <line x1="720" y1="0" x2="720" y2="900" stroke="#5eea93" strokeWidth="1.2" />
+        <circle cx="720" cy="450" r="120" stroke="#5eea93" strokeWidth="1.2" fill="none" />
+        <circle cx="720" cy="450" r="2.5" fill="#5eea93" />
       </svg>
-
-      {/* Subtle dark vignette at bottom */}
-      <div
-        className="absolute inset-0"
-        style={{ background: 'linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.4) 100%)' }}
-      />
     </div>
   )
 }

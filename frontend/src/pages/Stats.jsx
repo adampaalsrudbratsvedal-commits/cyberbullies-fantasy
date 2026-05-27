@@ -359,7 +359,7 @@ export default function Stats() {
     : []
 
   const rounds = probHistory ? Object.keys(probHistory).length : 0
-  const scenarioCount = '250 000 SIMULERINGER'
+  const scenarioCount = '5K SCENARIER' // backend constant; surface only if your sim returns it
 
   return (
     <>
@@ -401,7 +401,7 @@ export default function Stats() {
           <div className="flex flex-col gap-5">
             <Section
               title="Sannsynlighet for seier"
-              subtitle="Who knows ball"
+              subtitle="Hvem ender øverst når R64 er spilt?"
               color={TH.accent}
               entries={winEntries}
               valueKey="win_probability"

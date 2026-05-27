@@ -9,6 +9,7 @@
 // secondary values (round number, leader's overall for the "from leader"
 // gap on the last-place card).
 
+import Avatar from './Avatar'
 import { TH } from '../lib/theme'
 
 export default function SidePlayerCard({ kind, player, roundNo, leaderOverall }) {
@@ -19,7 +20,7 @@ export default function SidePlayerCard({ kind, player, roundNo, leaderOverall })
       label: 'LEDER',
       color: TH.gold,
       soft: TH.goldSoft,
-      image: '/trophy.png',
+      icon: '👑',
       bigValue: player.overallPoints ?? '—',
       bigSub: 'POENG · TOTALT',
       bigColor: TH.accent,
@@ -32,7 +33,7 @@ export default function SidePlayerCard({ kind, player, roundNo, leaderOverall })
       label: `RUNDEMESTER · R${roundNo ?? ''}`.trim(),
       color: TH.info,
       soft: TH.infoSoft,
-      image: '/rundevinner.png',
+      icon: '🎯',
       bigValue: player.roundPoints != null ? `+${player.roundPoints}` : '—',
       bigSub: `POENG · RUNDE ${roundNo ?? ''}`.trim(),
       bigColor: TH.info,
@@ -45,7 +46,7 @@ export default function SidePlayerCard({ kind, player, roundNo, leaderOverall })
       label: 'SISTEPLASS',
       color: TH.warn,
       soft: TH.warnSoft,
-      image: '/sisteplass.jpg',
+      icon: '🪣',
       bigValue: player.overallPoints ?? '—',
       bigSub: 'POENG · TOTALT',
       bigColor: TH.text,
@@ -71,22 +72,23 @@ export default function SidePlayerCard({ kind, player, roundNo, leaderOverall })
         className="flex flex-col gap-3.5 flex-1 p-4 px-[18px]"
         style={{ background: cfg.wash }}
       >
-        {/* Label */}
-        <span
-          className="font-mono font-semibold uppercase"
-          style={{ fontSize: 9.5, color: cfg.color, letterSpacing: '0.14em' }}
+        {/* Label pill */}
+        <div
+          className="self-start inline-flex items-center gap-1.5 rounded-full pl-2 pr-2.5 py-1"
+          style={{ background: cfg.soft, border: `1px solid ${cfg.color}33` }}
         >
-          {cfg.label}
-        </span>
-
-        {/* Identity + image */}
-        <div className="flex items-center gap-3">
-          <div
-            className="w-14 h-14 rounded-full flex-shrink-0 overflow-hidden"
-            style={{ border: `2px solid ${cfg.color}66`, background: TH.card }}
+          <span style={{ fontSize: 11 }}>{cfg.icon}</span>
+          <span
+            className="font-mono font-semibold uppercase"
+            style={{ fontSize: 9.5, color: cfg.color, letterSpacing: '0.14em' }}
           >
-            <img src={cfg.image} alt={cfg.label} className="w-full h-full object-cover" />
-          </div>
+            {cfg.label}
+          </span>
+        </div>
+
+        {/* Identity */}
+        <div className="flex items-center gap-3">
+          <Avatar name={player.userName ?? '?'} size={48} ring={cfg.color} />
           <div className="min-w-0">
             <div
               className="font-bold leading-tight truncate"
