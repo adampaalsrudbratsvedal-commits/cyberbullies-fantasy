@@ -6,6 +6,37 @@ import { getFixtures } from '../api'
 import Pitch from '../components/Pitch'
 import { TH } from '../lib/theme'
 
+// ── Flagg-mapping ─────────────────────────────────────────────
+
+const FLAGS = {
+  'Mexico': 'mx', 'South Africa': 'za', 'South Korea': 'kr', 'Korea Republic': 'kr',
+  'Czechia': 'cz', 'Canada': 'ca', 'Bosnia-Herzegovina': 'ba', 'United States': 'us',
+  'Paraguay': 'py', 'Qatar': 'qa', 'Switzerland': 'ch', 'Brazil': 'br',
+  'Morocco': 'ma', 'Haiti': 'ht', 'Scotland': 'gb-sct', 'Australia': 'au',
+  'Turkey': 'tr', 'Türkiye': 'tr', 'Germany': 'de', 'Curaçao': 'cw',
+  'Netherlands': 'nl', 'Japan': 'jp', "Côte d'Ivoire": 'ci', 'Ivory Coast': 'ci',
+  'Ecuador': 'ec', 'Sweden': 'se', 'Tunisia': 'tn', 'Belgium': 'be',
+  'Egypt': 'eg', 'Iran': 'ir', 'IR Iran': 'ir', 'New Zealand': 'nz',
+  'Spain': 'es', 'Cape Verde Islands': 'cv', 'Cabo Verde': 'cv',
+  'Saudi Arabia': 'sa', 'Uruguay': 'uy', 'France': 'fr', 'Senegal': 'sn',
+  'Iraq': 'iq', 'Norway': 'no', 'Argentina': 'ar', 'Algeria': 'dz',
+  'Austria': 'at', 'Jordan': 'jo', 'Portugal': 'pt', 'Congo DR': 'cd',
+  'England': 'gb-eng', 'Croatia': 'hr', 'Ghana': 'gh', 'Panama': 'pa',
+  'Uzbekistan': 'uz', 'Colombia': 'co',
+}
+
+function Flag({ name }) {
+  const code = FLAGS[name]
+  if (!code) return null
+  return (
+    <img
+      src={`https://flagcdn.com/w20/${code}.png`}
+      alt={name}
+      style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }}
+    />
+  )
+}
+
 // ── Hjelpefunksjoner ──────────────────────────────────────────
 
 function isLive(status) {
@@ -103,13 +134,14 @@ function MatchCard({ match }) {
         {/* Lag + resultat */}
         <div className="grid items-center gap-2" style={{ gridTemplateColumns: '1fr auto 1fr' }}>
           {/* Hjemmelag */}
-          <div className="text-right min-w-0">
+          <div className="flex items-center justify-end gap-1.5 min-w-0">
             <span
-              className="font-semibold leading-tight block"
+              className="font-semibold truncate"
               style={{ fontSize: 14, color: TH.text, letterSpacing: '-0.01em' }}
             >
               {homeTeam}
             </span>
+            <Flag name={homeTeam} />
           </div>
 
           {/* Score / VS */}
@@ -151,9 +183,10 @@ function MatchCard({ match }) {
           </div>
 
           {/* Bortelag */}
-          <div className="min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Flag name={awayTeam} />
             <span
-              className="font-semibold leading-tight block"
+              className="font-semibold truncate"
               style={{ fontSize: 14, color: TH.text, letterSpacing: '-0.01em' }}
             >
               {awayTeam}
