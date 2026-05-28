@@ -12,6 +12,7 @@ export default function Navbar() {
   const links = [
     { to: '/', label: 'Tabell' },
     { to: '/stats', label: 'Stats' },
+    { to: '/kamper', label: 'Kamper' },
     { to: '/historikk', label: 'Ligahistorie' },
     { to: '/regler', label: 'Regler' },
     ...(user?.is_admin ? [{ to: '/admin', label: 'Admin' }] : []),

@@ -37,3 +37,34 @@ async def fetch_rounds(db=None) -> list[dict]:
 
 async def fetch_gamebar(round_id: int, db=None) -> dict:
     return await _get(f"{settings.fifa_base_url}/gamebar?roundId={round_id}", db)
+
+
+async def fetch_fixtures(db=None) -> list[dict]:
+    """Fetch all fixtures/matches from FIFA Fantasy API."""
+    rounds = await fetch_rounds(db)
+    fixtures = []
+    # rounds.json may return a list of round objects with id fields
+    if isinstance(rounds, list):
+        round_ids = [r.get("id") or r.get("roundId") for r in rounds if r.get("id") or r.get("roundId")]
+    elif isinstance(rounds, dict):
+        round_ids = [r.get("id") or r.get("roundId") for r in rounds.get("rounds", []) or rounds.get("data", [])]
+    else:
+        round_ids = []
+
+    for rid in round_ids[:8]:  # cap at 8 rounds (group stage)
+        try:
+            bar = await fetch_gamebar(rid, db)
+            # gamebar may wrap data in different keys
+            matches = (
+                bar.get("matches")
+                or bar.get("fixtures")
+                or bar.get("success", {}).get("matches")
+                or bar.get("success", {}).get("fixtures")
+                or []
+            )
+            for m in matches:
+                m["roundId"] = rid
+            fixtures.extend(matches)
+        except Exception:
+            continue
+    return fixtures

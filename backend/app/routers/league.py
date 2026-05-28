@@ -5,7 +5,7 @@ from ..database import get_db
 from ..models.round_score import RoundScore
 from ..models.probability_snapshot import ProbabilitySnapshot
 from ..services.simulation import run_monte_carlo
-from ..services.fifa_api import fetch_standings
+from ..services.fifa_api import fetch_standings, fetch_fixtures, fetch_rounds, fetch_gamebar
 
 router = APIRouter(prefix="/api/league", tags=["league"])
 
@@ -83,6 +83,28 @@ def get_status(db: Session = Depends(get_db)):
     )
     last_synced = latest_snapshot.created_at.isoformat() if latest_snapshot and latest_snapshot.created_at else None
     return {"rounds_played": rounds_played, "last_synced": last_synced}
+
+
+@router.get("/fixtures")
+async def get_fixtures(db: Session = Depends(get_db)):
+    """Return all match fixtures with scores and status."""
+    try:
+        data = await fetch_fixtures(db)
+        return {"fixtures": data}
+    except Exception as e:
+        return {"fixtures": [], "error": str(e)}
+
+
+@router.get("/rounds-debug")
+async def get_rounds_debug(db: Session = Depends(get_db)):
+    """Debug: return raw rounds.json and one gamebar to inspect API shape."""
+    rounds_raw = await fetch_rounds(db)
+    gamebar_raw = None
+    try:
+        gamebar_raw = await fetch_gamebar(1, db)
+    except Exception:
+        pass
+    return {"rounds": rounds_raw, "gamebar_round1": gamebar_raw}
 
 
 @router.get("/probability-history")

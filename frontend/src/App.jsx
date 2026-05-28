@@ -6,6 +6,7 @@ import Stats from './pages/Stats'
 import History from './pages/History'
 import Admin from './pages/Admin'
 import Regler from './pages/Regler'
+import Kamper from './pages/Kamper'
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/stats" element={<Stats />} />
               <Route path="/historikk" element={<History />} />
+              <Route path="/kamper" element={<Kamper />} />
               <Route path="/regler" element={<Regler />} />
               <Route path="/admin" element={<Admin />} />
             </Routes>

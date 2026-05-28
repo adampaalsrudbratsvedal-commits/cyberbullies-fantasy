@@ -26,5 +26,7 @@ export const getSimulation = () => api.get('/league/simulation')
 export const triggerSync = () => api.post('/admin/sync')
 export const getProbabilityHistory = () => api.get('/league/probability-history')
 export const getLeagueStatus = () => api.get('/league/status')
+export const getFixtures = () => api.get('/league/fixtures')
+export const getRoundsDebug = () => api.get('/league/rounds-debug')
 
 export default api
