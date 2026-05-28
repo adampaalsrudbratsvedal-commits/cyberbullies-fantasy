@@ -40,31 +40,35 @@ async def fetch_gamebar(round_id: int, db=None) -> dict:
 
 
 async def fetch_fixtures(db=None) -> list[dict]:
-    """Fetch all fixtures/matches from FIFA Fantasy API."""
+    """Fetch all fixtures/matches from FIFA Fantasy rounds.json.
+    Structure: list of rounds, each with a 'tournaments' list of matches.
+    """
     rounds = await fetch_rounds(db)
     fixtures = []
-    # rounds.json may return a list of round objects with id fields
-    if isinstance(rounds, list):
-        round_ids = [r.get("id") or r.get("roundId") for r in rounds if r.get("id") or r.get("roundId")]
-    elif isinstance(rounds, dict):
-        round_ids = [r.get("id") or r.get("roundId") for r in rounds.get("rounds", []) or rounds.get("data", [])]
-    else:
-        round_ids = []
 
-    for rid in round_ids[:8]:  # cap at 8 rounds (group stage)
-        try:
-            bar = await fetch_gamebar(rid, db)
-            # gamebar may wrap data in different keys
-            matches = (
-                bar.get("matches")
-                or bar.get("fixtures")
-                or bar.get("success", {}).get("matches")
-                or bar.get("success", {}).get("fixtures")
-                or []
-            )
-            for m in matches:
-                m["roundId"] = rid
-            fixtures.extend(matches)
-        except Exception:
-            continue
+    if not isinstance(rounds, list):
+        return []
+
+    stage_labels = {
+        "GROUP": "Gruppespill",
+        "R32": "Runde av 32",
+        "R16": "Åttendedelsfinale",
+        "QF": "Kvartfinale",
+        "SF": "Semifinale",
+        "F": "Finale",
+    }
+
+    for r in rounds:
+        round_id = r.get("id")
+        stage = r.get("stage", "")
+        stage_label = stage_labels.get(stage, stage)
+        matches = r.get("tournaments") or []
+        for m in matches:
+            m["roundId"] = round_id
+            m["stage"] = stage
+            m["stageLabel"] = stage_label
+        fixtures.extend(matches)
+
+    # Sort by date
+    fixtures.sort(key=lambda m: m.get("date") or "")
     return fixtures
