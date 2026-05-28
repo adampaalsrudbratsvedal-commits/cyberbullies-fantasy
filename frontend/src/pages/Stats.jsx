@@ -420,7 +420,7 @@ function TopScorersSection({ scorers, loading, error }) {
                 className="font-mono font-semibold uppercase mb-2"
                 style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.14em' }}
               >
-                ⚽ MÅL
+                MÅL
               </div>
               {topGoals.length === 0 ? (
                 <p style={{ fontSize: 12, color: TH.dim, padding: '12px 0' }}>Ingen mål scoret ennå</p>
@@ -443,7 +443,7 @@ function TopScorersSection({ scorers, loading, error }) {
                 className="font-mono font-semibold uppercase mb-2"
                 style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.14em' }}
               >
-                🎯 ASSIST
+                ASSIST
               </div>
               {topAssists.length === 0 ? (
                 <p style={{ fontSize: 12, color: TH.dim, padding: '12px 0' }}>Ingen assist registrert ennå</p>

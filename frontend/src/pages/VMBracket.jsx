@@ -534,46 +534,46 @@ export default function VMBracket() {
           <div className="text-center py-16" style={{ color: TH.dim }}>Henter data…</div>
         ) : (
           <>
-            {/* Mobile tabs — must NOT have display in inline style, else overrides lg:hidden */}
-            <div className="lg:hidden mb-5">
-            <div
-              style={{
-                display: 'inline-flex',
-                gap: 6,
-                background: TH.card,
-                border: `1px solid ${TH.border}`,
-                borderRadius: 8,
-                padding: 4,
-              }}
-            >
-              {tabs.map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => setTab(t.key)}
-                  style={{
-                    padding: '6px 18px',
-                    borderRadius: 5,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: '0.1em',
-                    textTransform: 'uppercase',
-                    fontFamily: 'monospace',
-                    background: tab === t.key ? TH.accent : 'transparent',
-                    color: tab === t.key ? TH.bg : TH.muted,
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {t.label}
-                </button>
-              ))}
+            {/* Tab switcher — all screen sizes */}
+            <div style={{ marginBottom: 20 }}>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  gap: 4,
+                  background: TH.card,
+                  border: `1px solid ${TH.border}`,
+                  borderRadius: 8,
+                  padding: 4,
+                }}
+              >
+                {tabs.map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => setTab(t.key)}
+                    style={{
+                      padding: '7px 22px',
+                      borderRadius: 5,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      fontFamily: 'monospace',
+                      background: tab === t.key ? TH.accent : 'transparent',
+                      color: tab === t.key ? TH.bg : TH.muted,
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            </div>{/* end lg:hidden wrapper */}
 
-            {/* Desktop: side by side */}
-            <div className="hidden lg:grid gap-8" style={{ gridTemplateColumns: 'minmax(0,420px) 1fr' }}>
-              <div>
+            {/* Tab content */}
+            {tab === 'grupper' ? (
+              <>
                 <h2
                   className="font-semibold mb-4"
                   style={{ fontSize: 18, color: TH.text, letterSpacing: '-0.01em' }}
@@ -581,28 +581,10 @@ export default function VMBracket() {
                   Gruppetabeller
                 </h2>
                 <GroupsPanel groups={groups} />
-              </div>
-              <div>
-                <BracketPanel fixtures={fixtures} />
-              </div>
-            </div>
-
-            {/* Mobile: tab content */}
-            <div className="lg:hidden">
-              {tab === 'grupper' ? (
-                <>
-                  <h2
-                    className="font-semibold mb-4"
-                    style={{ fontSize: 18, color: TH.text, letterSpacing: '-0.01em' }}
-                  >
-                    Gruppetabeller
-                  </h2>
-                  <GroupsPanel groups={groups} />
-                </>
-              ) : (
-                <BracketPanel fixtures={fixtures} />
-              )}
-            </div>
+              </>
+            ) : (
+              <BracketPanel fixtures={fixtures} />
+            )}
           </>
         )}
       </div>
