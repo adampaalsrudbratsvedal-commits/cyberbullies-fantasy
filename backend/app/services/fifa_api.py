@@ -43,10 +43,26 @@ async def fetch_fixtures(db=None) -> list[dict]:
     """Fetch all fixtures/matches from FIFA Fantasy rounds.json.
     Structure: list of rounds, each with a 'tournaments' list of matches.
     """
-    rounds = await fetch_rounds(db)
+    raw = await fetch_rounds(db)
     fixtures = []
 
-    if not isinstance(rounds, list):
+    # Handle both plain list and wrapped responses
+    if isinstance(raw, list):
+        rounds = raw
+    elif isinstance(raw, dict):
+        rounds = (
+            raw.get("rounds")
+            or raw.get("data")
+            or raw.get("success", {}).get("rounds")
+            or raw.get("success", {}).get("data")
+            or []
+        )
+        if not rounds and isinstance(raw.get("success"), list):
+            rounds = raw["success"]
+    else:
+        return []
+
+    if not rounds:
         return []
 
     stage_labels = {

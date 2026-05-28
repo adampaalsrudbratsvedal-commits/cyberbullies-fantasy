@@ -236,10 +236,10 @@ export default function Kamper() {
     getFixtures()
       .then((r) => {
         setFixtures(r.data?.fixtures ?? [])
+        setError(r.data?.error || false)
         setLastUpdated(new Date())
-        setError(false)
       })
-      .catch(() => setError(true))
+      .catch(() => setError('Nettverksfeil'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -297,12 +297,15 @@ export default function Kamper() {
         {/* Innhold */}
         {loading ? (
           <div className="text-center py-16" style={{ color: TH.dim }}>Henter kampdata…</div>
-        ) : error ? (
+        ) : error && fixtures.length === 0 ? (
           <div
             className="rounded-2xl p-8 text-center"
             style={{ background: TH.elev, border: `1px solid ${TH.border}` }}
           >
-            <p style={{ color: TH.warn, fontSize: 14 }}>Kunne ikke hente kampdata. Prøv igjen senere.</p>
+            <p style={{ color: TH.warn, fontSize: 14, marginBottom: 8 }}>Kunne ikke hente kampdata.</p>
+            {typeof error === 'string' && (
+              <p className="font-mono" style={{ color: TH.dim, fontSize: 11 }}>{error}</p>
+            )}
           </div>
         ) : fixtures.length === 0 ? (
           <div
