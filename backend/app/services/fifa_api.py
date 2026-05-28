@@ -39,28 +39,48 @@ async def fetch_gamebar(round_id: int, db=None) -> dict:
     return await _get(f"{settings.fifa_base_url}/gamebar?roundId={round_id}", db)
 
 
-async def fetch_fixtures(db=None) -> list[dict]:
-    """Fetch all fixtures/matches from FIFA Fantasy rounds.json.
-    Structure: list of rounds, each with a 'tournaments' list of matches.
-    """
-    raw = await fetch_rounds(db)
-    fixtures = []
-
-    # Handle both plain list and wrapped responses
+def _parse_rounds(raw) -> list:
     if isinstance(raw, list):
-        rounds = raw
-    elif isinstance(raw, dict):
-        rounds = (
-            raw.get("rounds")
-            or raw.get("data")
-            or raw.get("success", {}).get("rounds")
-            or raw.get("success", {}).get("data")
-            or []
-        )
-        if not rounds and isinstance(raw.get("success"), list):
-            rounds = raw["success"]
-    else:
-        return []
+        return raw
+    if isinstance(raw, dict):
+        for key in ("rounds", "data"):
+            if isinstance(raw.get(key), list):
+                return raw[key]
+        success = raw.get("success")
+        if isinstance(success, list):
+            return success
+        if isinstance(success, dict):
+            for key in ("rounds", "data"):
+                if isinstance(success.get(key), list):
+                    return success[key]
+    return []
+
+
+async def fetch_fixtures(db=None) -> list[dict]:
+    """Fetch all fixtures/matches from FIFA Fantasy rounds.json."""
+    raw = None
+    # Try with auth first
+    try:
+        raw = await fetch_rounds(db)
+    except Exception:
+        pass
+
+    # Fallback: try without auth (rounds.json may be public)
+    if not raw:
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{settings.fifa_base_url}/rounds.json",
+                    headers={"accept": "application/json", "user-agent": "Mozilla/5.0"},
+                    timeout=15,
+                )
+                if resp.status_code == 200:
+                    raw = resp.json()
+        except Exception:
+            pass
+
+    rounds = _parse_rounds(raw)
+    fixtures = []
 
     if not rounds:
         return []

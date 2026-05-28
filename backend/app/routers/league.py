@@ -1,3 +1,4 @@
+import httpx
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -97,14 +98,23 @@ async def get_fixtures(db: Session = Depends(get_db)):
 
 @router.get("/rounds-debug")
 async def get_rounds_debug(db: Session = Depends(get_db)):
-    """Debug: return raw rounds.json and one gamebar to inspect API shape."""
-    rounds_raw = await fetch_rounds(db)
-    gamebar_raw = None
+    """Debug: return raw rounds.json to inspect API shape."""
+    result = {"rounds_with_auth": None, "rounds_no_auth": None, "error_with_auth": None, "error_no_auth": None}
     try:
-        gamebar_raw = await fetch_gamebar(1, db)
-    except Exception:
-        pass
-    return {"rounds": rounds_raw, "gamebar_round1": gamebar_raw}
+        result["rounds_with_auth"] = await fetch_rounds(db)
+    except Exception as e:
+        result["error_with_auth"] = f"{type(e).__name__}: {e}"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{settings.fifa_base_url}/rounds.json",
+                headers={"accept": "application/json", "user-agent": "Mozilla/5.0"},
+                timeout=15,
+            )
+            result["rounds_no_auth"] = resp.json() if resp.status_code == 200 else f"HTTP {resp.status_code}"
+    except Exception as e:
+        result["error_no_auth"] = f"{type(e).__name__}: {e}"
+    return result
 
 
 @router.get("/probability-history")
