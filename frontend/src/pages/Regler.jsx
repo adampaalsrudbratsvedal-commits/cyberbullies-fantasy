@@ -1,25 +1,42 @@
 export default function Regler() {
   return (
-    <div
-      className="min-h-screen w-full flex items-center justify-center px-4 py-12"
-      style={{
-        backgroundImage: 'url(/reglerBakgrunn.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed',
-      }}
-    >
+    <div style={{ position: 'relative', minHeight: '100vh' }}>
+      {/* Bakgrunn */}
       <img
-        src="/regler.png"
-        alt="Regler"
-        className="w-full drop-shadow-2xl"
+        src="/reglerBakgrunn.jpg"
+        alt=""
         style={{
-          maxWidth: 520,
+          position: 'fixed',
+          inset: 0,
           width: '100%',
-          height: 'auto',
+          height: '100%',
+          objectFit: 'cover',
+          objectPosition: 'center',
+          zIndex: -1,
         }}
       />
+
+      {/* Innhold */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          padding: '48px 16px',
+        }}
+      >
+        <img
+          src="/regler.png"
+          alt="Regler"
+          style={{
+            width: '100%',
+            maxWidth: 500,
+            height: 'auto',
+            filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.7))',
+          }}
+        />
+      </div>
     </div>
   )
 }
