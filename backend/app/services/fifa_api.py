@@ -59,21 +59,22 @@ def _parse_rounds(raw) -> list:
 async def fetch_fixtures(db=None) -> list[dict]:
     """Fetch all fixtures/matches from FIFA Fantasy rounds.json."""
     raw = None
+    errors = []
 
     # 1) Try without DB (env-vars only) — avoids SQLite issues on Vercel
     try:
         raw = await fetch_rounds(db=None)
-    except Exception:
-        pass
+    except Exception as e:
+        errors.append(f"no-db: {type(e).__name__}: {e}")
 
     # 2) Try with DB if env-only failed
     if not raw and db is not None:
         try:
             raw = await fetch_rounds(db)
-        except Exception:
-            pass
+        except Exception as e:
+            errors.append(f"with-db: {type(e).__name__}: {e}")
 
-    # 3) Last resort: unauthenticated request (rounds.json may be public)
+    # 3) Last resort: unauthenticated request
     if not raw:
         try:
             async with httpx.AsyncClient() as client:
@@ -84,8 +85,13 @@ async def fetch_fixtures(db=None) -> list[dict]:
                 )
                 if resp.status_code == 200:
                     raw = resp.json()
-        except Exception:
-            pass
+                else:
+                    errors.append(f"no-auth: HTTP {resp.status_code}")
+        except Exception as e:
+            errors.append(f"no-auth: {type(e).__name__}: {e}")
+
+    if errors and not raw:
+        raise Exception(" | ".join(errors))
 
     rounds = _parse_rounds(raw)
     fixtures = []
