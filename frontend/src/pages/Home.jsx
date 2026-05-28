@@ -258,6 +258,7 @@ export default function Home() {
               player={last}
               roundNo={roundNo}
               leaderOverall={leader?.overallPoints}
+              safeOverall={sorted[sorted.length - 2]?.overallPoints}
             />
           </aside>
         </div>

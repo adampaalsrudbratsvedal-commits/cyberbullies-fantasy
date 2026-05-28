@@ -13,6 +13,7 @@ export default function Navbar() {
     { to: '/', label: 'Tabell' },
     { to: '/stats', label: 'Stats' },
     { to: '/historikk', label: 'Ligahistorie' },
+    { to: '/regler', label: 'Regler' },
     ...(user?.is_admin ? [{ to: '/admin', label: 'Admin' }] : []),
   ]
 
@@ -37,7 +38,7 @@ export default function Navbar() {
               <Link
                 key={l.to}
                 to={l.to}
-                className="px-4 py-1.5 text-xs font-bold uppercase tracking-widest transition-colors"
+                className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
                 style={{
                   color: isActive(l.to) ? '#fff' : '#aaa',
                   borderBottom: isActive(l.to) ? '2px solid #fff' : '2px solid transparent',

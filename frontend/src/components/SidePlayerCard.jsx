@@ -1,6 +1,6 @@
 import { TH } from '../lib/theme'
 
-export default function SidePlayerCard({ kind, player, roundNo, leaderOverall }) {
+export default function SidePlayerCard({ kind, player, roundNo, leaderOverall, safeOverall }) {
   if (!player) return null
 
   const cfg = {
@@ -38,10 +38,10 @@ export default function SidePlayerCard({ kind, player, roundNo, leaderOverall })
       bigValue: player.overallPoints ?? '—',
       bigSub: 'POENG · TOTALT',
       bigColor: TH.text,
-      sideLabel: 'FRA LEDER',
+      sideLabel: 'TIL TRYGGHET',
       sideValue:
-        leaderOverall != null && player.overallPoints != null
-          ? `−${leaderOverall - player.overallPoints}`
+        safeOverall != null && player.overallPoints != null
+          ? `−${safeOverall - player.overallPoints}`
           : '—',
       sideColor: TH.warn,
       wash: 'linear-gradient(180deg, rgba(251,113,133,0.06) 0%, transparent 55%)',
