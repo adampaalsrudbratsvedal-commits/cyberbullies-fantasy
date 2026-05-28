@@ -113,9 +113,9 @@ export default function Home() {
             >
               {/* Header row */}
               <div
-                className="grid items-center font-mono uppercase px-6 py-3"
+                className="grid items-center font-mono uppercase px-3 sm:px-6 py-3"
                 style={{
-                  gridTemplateColumns: '52px 1fr 110px 110px',
+                  gridTemplateColumns: '36px 1fr 70px 80px',
                   background: TH.bg,
                   borderBottom: `1px solid ${TH.border}`,
                   fontSize: 10,
@@ -157,9 +157,9 @@ export default function Home() {
                   return (
                     <div
                       key={p.userName}
-                      className="relative grid items-center gap-3 px-6 py-4 tabular-nums"
+                      className="relative grid items-center gap-2 px-3 sm:px-6 py-3 tabular-nums"
                       style={{
-                        gridTemplateColumns: '52px 1fr 110px 110px',
+                        gridTemplateColumns: '36px 1fr 70px 80px',
                         borderTop: i > 0 ? `1px solid ${TH.border}` : 'none',
                         background: isLeader
                           ? 'linear-gradient(90deg, rgba(251,191,36,0.07) 0%, transparent 65%)'
@@ -183,8 +183,8 @@ export default function Home() {
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div className="min-w-0">
                           <div
-                            className="font-semibold flex items-center gap-2"
-                            style={{ fontSize: 15, color: TH.text, letterSpacing: '-0.01em' }}
+                            className="font-semibold flex items-center gap-1.5"
+                            style={{ fontSize: 14, color: TH.text, letterSpacing: '-0.01em' }}
                           >
                             <span className="truncate">{p.userName}</span>
                             {isRoundWinner && roundNo != null && (

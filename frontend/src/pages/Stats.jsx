@@ -359,7 +359,7 @@ export default function Stats() {
     : []
 
   const rounds = probHistory ? Object.keys(probHistory).length : 0
-  const scenarioCount = '5K SCENARIER' // backend constant; surface only if your sim returns it
+  const scenarioCount = '250K SIMULERINGER'
 
   return (
     <>
