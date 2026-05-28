@@ -9,7 +9,7 @@
 //   getProbabilityHistory() → { [round]: { [name]: { win_probability, last_probability } } }
 
 import { useEffect, useState } from 'react'
-import { getSimulation, getProbabilityHistory, getScorers } from '../api'
+import { getSimulation, getProbabilityHistory, getScorers, getHistory } from '../api'
 import {
   LineChart,
   Line,
@@ -468,6 +468,114 @@ function TopScorersSection({ scorers, loading, error }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Runderekorder
+// ─────────────────────────────────────────────────────────────
+
+function RecordRow({ rank, username, round, points, isHigh }) {
+  const isFirst = rank === 1
+  const numColor = isFirst ? (isHigh ? TH.gold : TH.warn) : TH.dim
+  const ptColor  = isFirst ? (isHigh ? TH.accent : TH.warn) : TH.muted
+  return (
+    <div
+      className="flex items-center gap-3 py-2.5"
+      style={{ borderTop: rank > 1 ? `1px solid ${TH.border}` : 'none' }}
+    >
+      <span
+        className="font-mono font-semibold flex-shrink-0"
+        style={{ fontSize: 11, color: numColor, width: 20, textAlign: 'right' }}
+      >
+        {String(rank).padStart(2, '0')}
+      </span>
+      <span
+        style={{ fontSize: 13.5, color: TH.text, fontWeight: 500, flex: 1,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+      >
+        {username}
+      </span>
+      <span
+        className="font-mono flex-shrink-0"
+        style={{ fontSize: 10.5, color: TH.dim, letterSpacing: '0.06em' }}
+      >
+        R{round}
+      </span>
+      <span
+        className="font-mono font-bold tabular-nums flex-shrink-0"
+        style={{ fontSize: 20, color: ptColor, letterSpacing: '-0.025em', minWidth: 44, textAlign: 'right' }}
+      >
+        {points}
+      </span>
+    </div>
+  )
+}
+
+function RoundRecordsSection({ history, loading }) {
+  const allScores = []
+  if (history) {
+    Object.entries(history).forEach(([round, scores]) => {
+      scores.forEach((s) => {
+        if (s.round_points != null) {
+          allScores.push({ username: s.username, round: Number(round), points: s.round_points })
+        }
+      })
+    })
+  }
+
+  const top5 = [...allScores].sort((a, b) => b.points - a.points).slice(0, 5)
+  const low5 = [...allScores].sort((a, b) => a.points - b.points).slice(0, 5)
+  const noData = allScores.length === 0
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ background: TH.elev, border: `1px solid ${TH.border}` }}
+    >
+      <div style={{ height: 3, background: `linear-gradient(90deg, ${TH.accent} 0%, ${TH.warn} 100%)` }} />
+      <div className="px-5 pt-4 pb-2">
+        <h2 className="font-bold" style={{ fontSize: 22, color: TH.text, letterSpacing: '-0.025em' }}>
+          Runderekorder
+        </h2>
+        <p className="mt-1 mb-4" style={{ fontSize: 12, color: TH.muted }}>
+          Beste og svakeste enkeltrunder i ligaen
+        </p>
+
+        {loading ? (
+          <div className="text-center py-8" style={{ color: TH.dim }}>Laster…</div>
+        ) : noData ? (
+          <p style={{ fontSize: 12, color: TH.dim, padding: '12px 0' }}>
+            Ingen rundedata ennå — vises etter første runde
+          </p>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 pb-2">
+            <div>
+              <div
+                className="font-mono font-semibold uppercase mb-2"
+                style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.14em' }}
+              >
+                TOPP 5 RUNDER
+              </div>
+              {top5.map((s, i) => (
+                <RecordRow key={i} rank={i + 1} username={s.username} round={s.round} points={s.points} isHigh />
+              ))}
+            </div>
+            <div>
+              <div
+                className="font-mono font-semibold uppercase mb-2"
+                style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.14em' }}
+              >
+                BUNN 5 RUNDER
+              </div>
+              {low5.map((s, i) => (
+                <RecordRow key={i} rank={i + 1} username={s.username} round={s.round} points={s.points} isHigh={false} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────
 export default function Stats() {
@@ -478,6 +586,8 @@ export default function Stats() {
   const [scorers, setScorers] = useState(null)
   const [scorersLoading, setScorersLoading] = useState(true)
   const [scorersError, setScorersError] = useState(false)
+  const [history, setHistory] = useState(null)
+  const [historyLoading, setHistoryLoading] = useState(true)
 
   useEffect(() => {
     setSimLoading(true)
@@ -492,6 +602,10 @@ export default function Stats() {
       .then((r) => setScorers(r.data?.scorers ?? []))
       .catch(() => setScorersError(true))
       .finally(() => setScorersLoading(false))
+    getHistory()
+      .then((r) => setHistory(r.data))
+      .catch(() => {})
+      .finally(() => setHistoryLoading(false))
   }, [])
 
   const winEntries = sim
@@ -568,6 +682,11 @@ export default function Stats() {
             />
           </div>
         )}
+      </div>
+
+      {/* Runderekorder */}
+      <div className="max-w-2xl mx-auto mt-5 px-4">
+        <RoundRecordsSection history={history} loading={historyLoading} />
       </div>
 
       {/* Toppscorere */}
