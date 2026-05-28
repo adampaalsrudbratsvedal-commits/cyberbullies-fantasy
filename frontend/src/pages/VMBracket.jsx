@@ -457,17 +457,7 @@ function BracketPanel({ fixtures }) {
     ['R32', 'R16', 'QF', 'SF', 'F'].includes(f.stage)
   )
 
-  if (knockoutFixtures.length === 0) {
-    return (
-      <div
-        className="rounded-2xl p-8 text-center"
-        style={{ background: TH.elev, border: `1px solid ${TH.border}` }}
-      >
-        <p style={{ color: TH.dim, fontSize: 13 }}>Sluttspillkamper fylles inn når gruppespillet er ferdig</p>
-      </div>
-    )
-  }
-
+  // Always render the bracket — shows empty placeholder slots before teams are set
   return (
     <div
       className="rounded-2xl overflow-hidden"
@@ -544,15 +534,16 @@ export default function VMBracket() {
           <div className="text-center py-16" style={{ color: TH.dim }}>Henter data…</div>
         ) : (
           <>
-            {/* Mobile tabs */}
+            {/* Mobile tabs — must NOT have display in inline style, else overrides lg:hidden */}
+            <div className="lg:hidden mb-5">
             <div
-              className="flex gap-1.5 mb-5 lg:hidden"
               style={{
+                display: 'inline-flex',
+                gap: 6,
                 background: TH.card,
                 border: `1px solid ${TH.border}`,
                 borderRadius: 8,
                 padding: 4,
-                display: 'inline-flex',
               }}
             >
               {tabs.map((t) => (
@@ -578,6 +569,7 @@ export default function VMBracket() {
                 </button>
               ))}
             </div>
+            </div>{/* end lg:hidden wrapper */}
 
             {/* Desktop: side by side */}
             <div className="hidden lg:grid gap-8" style={{ gridTemplateColumns: 'minmax(0,420px) 1fr' }}>
