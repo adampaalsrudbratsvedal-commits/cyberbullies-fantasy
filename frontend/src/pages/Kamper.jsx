@@ -249,7 +249,7 @@ export default function Kamper() {
     return () => clearInterval(interval)
   }, [load])
 
-  const grouped = groupByRound(fixtures)
+  const grouped = groupByRound(fixtures.filter(m => m.homeSquadName && m.awaySquadName))
   const roundIds = Object.keys(grouped).sort((a, b) => Number(a) - Number(b))
   const liveTotal = fixtures.filter((m) => isLive(m.status)).length
   const totalMatches = fixtures.length
