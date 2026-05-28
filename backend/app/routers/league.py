@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..database import get_db
+from ..config import settings
 from ..models.round_score import RoundScore
 from ..models.probability_snapshot import ProbabilitySnapshot
 from ..services.simulation import run_monte_carlo
