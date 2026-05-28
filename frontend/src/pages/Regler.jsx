@@ -31,7 +31,7 @@ export default function Regler() {
           alt="Regler"
           style={{
             width: '100%',
-            maxWidth: 500,
+            maxWidth: 860,
             height: 'auto',
             filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.7))',
           }}
