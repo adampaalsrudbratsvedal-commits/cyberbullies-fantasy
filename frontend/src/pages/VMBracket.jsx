@@ -296,7 +296,7 @@ function BracketConnector({ fromCount, containerH, side }) {
   const slotH = containerH / fromCount
 
   return (
-    <div style={{ width: 10, height: containerH, position: 'relative', flexShrink: 0 }}>
+    <div style={{ flex: '1 0 12px', height: containerH, position: 'relative' }}>
       {Array.from({ length: pairCount }).map((_, i) => {
         const topCenter = (i * 2 + 0.5) * slotH      // center of top slot in pair
         const botCenter = (i * 2 + 1.5) * slotH      // center of bottom slot in pair
@@ -337,16 +337,9 @@ function BracketConnector({ fromCount, containerH, side }) {
 }
 
 // Single connecting line between SF and FINAL
-function SFtoFinalConnector({ side }) {
-  if (side === 'left') {
-    return (
-      <div style={{ width: 10, height: BRACKET_H, position: 'relative', flexShrink: 0 }}>
-        <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: TH.border }} />
-      </div>
-    )
-  }
+function SFtoFinalConnector() {
   return (
-    <div style={{ width: 10, height: BRACKET_H, position: 'relative', flexShrink: 0 }}>
+    <div style={{ flex: '1 0 12px', height: BRACKET_H, position: 'relative' }}>
       <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: TH.border }} />
     </div>
   )
@@ -354,7 +347,7 @@ function SFtoFinalConnector({ side }) {
 
 function RoundCol({ slots, isFinal, label, labelColor }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
       <span
         style={{
           fontSize: 7.5,
@@ -415,13 +408,13 @@ function BracketSection({ fixtures }) {
   const b = buildBracket(fixtures)
 
   return (
-    <div style={{ overflowX: 'auto', overflowY: 'hidden', paddingBottom: 8 }}>
+    <div style={{ overflowX: 'auto', overflowY: 'hidden', paddingBottom: 8, width: '100%' }}>
       <div
         style={{
           display: 'flex',
           alignItems: 'flex-start',
-          gap: 0,
-          minWidth: 'max-content',
+          width: '100%',
+          minWidth: 530,
           padding: '4px 8px',
         }}
       >
@@ -433,13 +426,13 @@ function BracketSection({ fixtures }) {
         <RoundCol slots={b.qfL} label="KVF" labelColor={TH.gold} />
         <BracketConnector fromCount={2} containerH={BRACKET_H} side="left" />
         <RoundCol slots={b.sfL} label="SEF" labelColor={TH.gold} />
-        <SFtoFinalConnector side="left" />
+        <SFtoFinalConnector />
 
         {/* FINAL */}
         <RoundCol slots={b.final} isFinal label="FINALE" labelColor="#f43f5e" />
 
         {/* RIGHT HALF */}
-        <SFtoFinalConnector side="right" />
+        <SFtoFinalConnector />
         <RoundCol slots={b.sfR} label="SEF" labelColor={TH.gold} />
         <BracketConnector fromCount={2} containerH={BRACKET_H} side="right" />
         <RoundCol slots={b.qfR} label="KVF" labelColor={TH.gold} />
