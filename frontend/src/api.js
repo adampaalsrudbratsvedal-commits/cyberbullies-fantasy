@@ -28,5 +28,7 @@ export const getProbabilityHistory = () => api.get('/league/probability-history'
 export const getLeagueStatus = () => api.get('/league/status')
 export const getFixtures = () => api.get('/league/fixtures')
 export const getRoundsDebug = () => api.get('/league/rounds-debug')
+export const getGroups = () => api.get('/league/groups')
+export const getScorers = () => api.get('/league/scorers')
 
 export default api

@@ -7,7 +7,7 @@ from ..config import settings
 from ..models.round_score import RoundScore
 from ..models.probability_snapshot import ProbabilitySnapshot
 from ..services.simulation import run_monte_carlo
-from ..services.fifa_api import fetch_standings, fetch_fixtures, fetch_rounds, fetch_gamebar
+from ..services.fifa_api import fetch_standings, fetch_fixtures, fetch_rounds, fetch_gamebar, fetch_groups, fetch_scorers
 
 router = APIRouter(prefix="/api/league", tags=["league"])
 
@@ -95,6 +95,28 @@ async def get_fixtures(db: Session = Depends(get_db)):
         return {"fixtures": data}
     except Exception as e:
         return {"fixtures": [], "error": str(e)}
+
+
+@router.get("/groups")
+async def get_groups(db: Session = Depends(get_db)):
+    """Return WC 2026 group standings."""
+    try:
+        data = await fetch_groups()
+        standings = [s for s in data.get("standings", []) if s.get("type") == "TOTAL"]
+        standings.sort(key=lambda s: s.get("group", ""))
+        return {"standings": standings}
+    except Exception as e:
+        return {"standings": [], "error": str(e)}
+
+
+@router.get("/scorers")
+async def get_scorers_endpoint(db: Session = Depends(get_db)):
+    """Return WC 2026 top scorers and assist leaders."""
+    try:
+        data = await fetch_scorers()
+        return {"scorers": data.get("scorers", [])}
+    except Exception as e:
+        return {"scorers": [], "error": str(e)}
 
 
 @router.get("/rounds-debug")

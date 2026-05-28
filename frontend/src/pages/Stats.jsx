@@ -9,7 +9,7 @@
 //   getProbabilityHistory() → { [round]: { [name]: { win_probability, last_probability } } }
 
 import { useEffect, useState } from 'react'
-import { getSimulation, getProbabilityHistory } from '../api'
+import { getSimulation, getProbabilityHistory, getScorers } from '../api'
 import {
   LineChart,
   Line,
@@ -328,6 +328,146 @@ function Section({
 }
 
 // ─────────────────────────────────────────────────────────────
+// Toppscorere
+// ─────────────────────────────────────────────────────────────
+
+const FLAGS_SCORERS = {
+  'Mexico': 'mx', 'South Africa': 'za', 'Korea Republic': 'kr', 'South Korea': 'kr',
+  'Czechia': 'cz', 'Canada': 'ca', 'Bosnia-Herzegovina': 'ba', 'United States': 'us', 'USA': 'us',
+  'Paraguay': 'py', 'Qatar': 'qa', 'Switzerland': 'ch', 'Brazil': 'br',
+  'Morocco': 'ma', 'Haiti': 'ht', 'Scotland': 'gb-sct', 'Australia': 'au',
+  'Turkey': 'tr', 'Türkiye': 'tr', 'Germany': 'de', 'Curaçao': 'cw',
+  'Netherlands': 'nl', 'Japan': 'jp', "Côte d'Ivoire": 'ci', 'Ivory Coast': 'ci',
+  'Ecuador': 'ec', 'Sweden': 'se', 'Tunisia': 'tn', 'Belgium': 'be',
+  'Egypt': 'eg', 'Iran': 'ir', 'IR Iran': 'ir', 'New Zealand': 'nz',
+  'Spain': 'es', 'Cape Verde Islands': 'cv', 'Cabo Verde': 'cv', 'Cape Verde': 'cv',
+  'Saudi Arabia': 'sa', 'Uruguay': 'uy', 'France': 'fr', 'Senegal': 'sn',
+  'Iraq': 'iq', 'Norway': 'no', 'Argentina': 'ar', 'Algeria': 'dz',
+  'Austria': 'at', 'Jordan': 'jo', 'Portugal': 'pt', 'Congo DR': 'cd', 'DR Congo': 'cd',
+  'England': 'gb-eng', 'Croatia': 'hr', 'Ghana': 'gh', 'Panama': 'pa',
+  'Uzbekistan': 'uz', 'Colombia': 'co',
+}
+
+function ScorerRow({ rank, name, teamName, value, isTop }) {
+  const flagCode = FLAGS_SCORERS[teamName]
+  return (
+    <div
+      className="flex items-center gap-3 py-2.5"
+      style={{ borderTop: rank > 1 ? `1px solid ${TH.border}` : 'none' }}
+    >
+      <span
+        className="font-mono font-semibold flex-shrink-0 w-5 text-right"
+        style={{ fontSize: 11, color: isTop ? TH.gold : TH.dim }}
+      >
+        {String(rank).padStart(2, '0')}
+      </span>
+      {flagCode ? (
+        <img
+          src={`https://flagcdn.com/w20/${flagCode}.png`}
+          alt={teamName}
+          style={{ width: 18, height: 12, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }}
+        />
+      ) : (
+        <div style={{ width: 18, height: 12, borderRadius: 2, background: TH.bg, flexShrink: 0, opacity: 0.3 }} />
+      )}
+      <span style={{ fontSize: 13.5, color: TH.text, fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {name}
+      </span>
+      <span
+        className="font-mono font-bold tabular-nums flex-shrink-0"
+        style={{ fontSize: 16, color: isTop ? TH.accent : TH.muted, letterSpacing: '-0.02em' }}
+      >
+        {value}
+      </span>
+    </div>
+  )
+}
+
+function TopScorersSection({ scorers, loading, error }) {
+  const rawList = scorers ?? []
+
+  const topGoals = [...rawList]
+    .sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0) || (a.player?.name ?? '').localeCompare(b.player?.name ?? ''))
+    .slice(0, 5)
+
+  const topAssists = [...rawList]
+    .sort((a, b) => (b.assists ?? 0) - (a.assists ?? 0) || (a.player?.name ?? '').localeCompare(b.player?.name ?? ''))
+    .slice(0, 5)
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ background: TH.elev, border: `1px solid ${TH.border}` }}
+    >
+      <div style={{ height: 3, background: TH.gold }} />
+      <div className="px-5 pt-4 pb-2">
+        <h2 className="font-bold" style={{ fontSize: 22, color: TH.text, letterSpacing: '-0.025em' }}>
+          Toppscorere
+        </h2>
+        <p className="mt-1 mb-4" style={{ fontSize: 12, color: TH.muted }}>
+          VM 2026 · Topp 5 mål og assist
+        </p>
+
+        {loading ? (
+          <div className="text-center py-8" style={{ color: TH.dim }}>Henter data…</div>
+        ) : error ? (
+          <div className="text-center py-8" style={{ color: TH.warn, fontSize: 13 }}>Kunne ikke hente toppscorere</div>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 pb-2">
+            {/* Mål */}
+            <div>
+              <div
+                className="font-mono font-semibold uppercase mb-2"
+                style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.14em' }}
+              >
+                ⚽ MÅL
+              </div>
+              {topGoals.length === 0 ? (
+                <p style={{ fontSize: 12, color: TH.dim, padding: '12px 0' }}>Ingen mål scoret ennå</p>
+              ) : (
+                topGoals.map((s, i) => (
+                  <ScorerRow
+                    key={s.player?.id ?? i}
+                    rank={i + 1}
+                    name={s.player?.name ?? '—'}
+                    teamName={s.team?.name}
+                    value={s.goals ?? 0}
+                    isTop={i === 0}
+                  />
+                ))
+              )}
+            </div>
+            {/* Assist */}
+            <div>
+              <div
+                className="font-mono font-semibold uppercase mb-2"
+                style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.14em' }}
+              >
+                🎯 ASSIST
+              </div>
+              {topAssists.length === 0 ? (
+                <p style={{ fontSize: 12, color: TH.dim, padding: '12px 0' }}>Ingen assist registrert ennå</p>
+              ) : (
+                topAssists.map((s, i) => (
+                  <ScorerRow
+                    key={s.player?.id ?? i}
+                    rank={i + 1}
+                    name={s.player?.name ?? '—'}
+                    teamName={s.team?.name}
+                    value={s.assists ?? 0}
+                    isTop={i === 0}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────
 export default function Stats() {
@@ -335,6 +475,9 @@ export default function Stats() {
   const [simError, setSimError] = useState(false)
   const [simLoading, setSimLoading] = useState(true)
   const [probHistory, setProbHistory] = useState(null)
+  const [scorers, setScorers] = useState(null)
+  const [scorersLoading, setScorersLoading] = useState(true)
+  const [scorersError, setScorersError] = useState(false)
 
   useEffect(() => {
     setSimLoading(true)
@@ -345,6 +488,10 @@ export default function Stats() {
     getProbabilityHistory()
       .then((r) => setProbHistory(r.data))
       .catch(() => {})
+    getScorers()
+      .then((r) => setScorers(r.data?.scorers ?? []))
+      .catch(() => setScorersError(true))
+      .finally(() => setScorersLoading(false))
   }, [])
 
   const winEntries = sim
@@ -421,6 +568,15 @@ export default function Stats() {
             />
           </div>
         )}
+      </div>
+
+      {/* Toppscorere */}
+      <div className="max-w-2xl mx-auto mt-5">
+        <TopScorersSection
+          scorers={scorers}
+          loading={scorersLoading}
+          error={scorersError}
+        />
       </div>
 
       {/* Størst tiss */}

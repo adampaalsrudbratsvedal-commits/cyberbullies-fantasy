@@ -100,26 +100,33 @@ async def fetch_fixtures(db=None) -> list[dict]:
     fixtures.sort(key=lambda x: x.get("date") or "")
     return fixtures
 
-    stage_labels = {
-        "GROUP": "Gruppespill",
-        "R32": "Runde av 32",
-        "R16": "Åttendedelsfinale",
-        "QF": "Kvartfinale",
-        "SF": "Semifinale",
-        "F": "Finale",
-    }
+async def fetch_groups() -> dict:
+    """Fetch WC 2026 group standings from football-data.org."""
+    api_key = settings.football_data_api_key
+    if not api_key:
+        raise Exception("FOOTBALL_DATA_API_KEY ikke satt i miljøvariabler")
 
-    for r in rounds:
-        round_id = r.get("id")
-        stage = r.get("stage", "")
-        stage_label = stage_labels.get(stage, stage)
-        matches = r.get("tournaments") or []
-        for m in matches:
-            m["roundId"] = round_id
-            m["stage"] = stage
-            m["stageLabel"] = stage_label
-        fixtures.extend(matches)
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            "https://api.football-data.org/v4/competitions/WC/standings",
+            headers={"X-Auth-Token": api_key},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json()
 
-    # Sort by date
-    fixtures.sort(key=lambda m: m.get("date") or "")
-    return fixtures
+
+async def fetch_scorers() -> dict:
+    """Fetch WC 2026 top scorers from football-data.org."""
+    api_key = settings.football_data_api_key
+    if not api_key:
+        raise Exception("FOOTBALL_DATA_API_KEY ikke satt i miljøvariabler")
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            "https://api.football-data.org/v4/competitions/WC/scorers?limit=20",
+            headers={"X-Auth-Token": api_key},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json()
