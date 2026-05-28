@@ -39,65 +39,66 @@ async def fetch_gamebar(round_id: int, db=None) -> dict:
     return await _get(f"{settings.fifa_base_url}/gamebar?roundId={round_id}", db)
 
 
-def _parse_rounds(raw) -> list:
-    if isinstance(raw, list):
-        return raw
-    if isinstance(raw, dict):
-        for key in ("rounds", "data"):
-            if isinstance(raw.get(key), list):
-                return raw[key]
-        success = raw.get("success")
-        if isinstance(success, list):
-            return success
-        if isinstance(success, dict):
-            for key in ("rounds", "data"):
-                if isinstance(success.get(key), list):
-                    return success[key]
-    return []
+STAGE_MAP = {
+    "GROUP_STAGE": ("GROUP", "Gruppespill"),
+    "LAST_32":     ("R32",   "Runde av 32"),
+    "LAST_16":     ("R16",   "Åttendedelsfinale"),
+    "QUARTER_FINALS": ("QF", "Kvartfinale"),
+    "SEMI_FINALS": ("SF",    "Semifinale"),
+    "FINAL":       ("F",     "Finale"),
+}
 
 
 async def fetch_fixtures(db=None) -> list[dict]:
-    """Fetch all fixtures/matches from FIFA Fantasy rounds.json."""
-    raw = None
-    errors = []
+    """Fetch all WC 2026 fixtures from football-data.org."""
+    api_key = settings.football_data_api_key
+    if not api_key:
+        raise Exception("FOOTBALL_DATA_API_KEY ikke satt i miljøvariabler")
 
-    # 1) Try without DB (env-vars only) — avoids SQLite issues on Vercel
-    try:
-        raw = await fetch_rounds(db=None)
-    except Exception as e:
-        errors.append(f"no-db: {type(e).__name__}: {e}")
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            "https://api.football-data.org/v4/competitions/WC/matches",
+            headers={"X-Auth-Token": api_key},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
 
-    # 2) Try with DB if env-only failed
-    if not raw and db is not None:
-        try:
-            raw = await fetch_rounds(db)
-        except Exception as e:
-            errors.append(f"with-db: {type(e).__name__}: {e}")
-
-    # 3) Last resort: unauthenticated request
-    if not raw:
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{settings.fifa_base_url}/rounds.json",
-                    headers={"accept": "application/json, */*", "user-agent": "Mozilla/5.0"},
-                    timeout=15,
-                )
-                if resp.status_code == 200:
-                    raw = resp.json()
-                else:
-                    errors.append(f"no-auth: HTTP {resp.status_code}")
-        except Exception as e:
-            errors.append(f"no-auth: {type(e).__name__}: {e}")
-
-    if errors and not raw:
-        raise Exception(" | ".join(errors))
-
-    rounds = _parse_rounds(raw)
+    raw_matches = data.get("matches", [])
     fixtures = []
 
-    if not rounds:
-        return []
+    for m in raw_matches:
+        fd_stage = m.get("stage", "GROUP_STAGE")
+        stage, stage_label = STAGE_MAP.get(fd_stage, ("GROUP", fd_stage))
+        matchday = m.get("matchday") or 1
+
+        # Knockout rounds get their own "round" after group stage (rounds 1-3)
+        knockout_round_map = {"R32": 4, "R16": 5, "QF": 6, "SF": 7, "F": 8}
+        round_id = knockout_round_map.get(stage, matchday)
+
+        score = m.get("score", {})
+        full = score.get("fullTime", {})
+        home_score = full.get("home")
+        away_score = full.get("away")
+
+        status = m.get("status", "SCHEDULED")
+
+        fixtures.append({
+            "id": m.get("id"),
+            "roundId": round_id,
+            "stage": stage,
+            "stageLabel": stage_label,
+            "homeSquadName": m.get("homeTeam", {}).get("name") or m.get("homeTeam", {}).get("shortName"),
+            "awaySquadName": m.get("awayTeam", {}).get("name") or m.get("awayTeam", {}).get("shortName"),
+            "homeScore": home_score,
+            "awayScore": away_score,
+            "date": m.get("utcDate"),
+            "venueName": m.get("venue"),
+            "status": status,
+        })
+
+    fixtures.sort(key=lambda x: x.get("date") or "")
+    return fixtures
 
     stage_labels = {
         "GROUP": "Gruppespill",

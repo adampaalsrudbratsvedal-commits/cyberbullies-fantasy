@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     fifa_fp_user: str = ""
     fifa_refresh_token: str = ""
 
+    football_data_api_key: str = ""
+
     cors_origins: list[str] = ["http://localhost:5173"]
 
     league_name: str = "Cyberbullies"
