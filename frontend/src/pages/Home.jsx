@@ -7,13 +7,20 @@
 //   getStandings()  → [{ userName, overallPoints, roundPoints }]
 //   getHistory()    → { [round]: [{ username, ... }] }   (round number only)
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { getStandings, getHistory } from '../api'
 import Pitch from '../components/Pitch'
 import SidePlayerCard from '../components/SidePlayerCard'
 import { TH } from '../lib/theme'
 
 const TOTAL_ROUNDS = 64
+const TOURNAMENT_START = new Date('2026-06-11T00:00:00')
+const TOURNAMENT_END   = new Date('2026-07-20T00:00:00')
+
+function isTournamentActive() {
+  const now = new Date()
+  return now >= TOURNAMENT_START && now <= TOURNAMENT_END
+}
 
 export default function Home() {
   const [standings, setStandings] = useState([])
@@ -21,7 +28,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     Promise.all([getStandings(), getHistory().catch(() => null)])
       .then(([s, h]) => {
         setStandings(s.data)
@@ -33,6 +40,13 @@ export default function Home() {
       .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    fetchData()
+    if (!isTournamentActive()) return
+    const interval = setInterval(fetchData, 60_000)
+    return () => clearInterval(interval)
+  }, [fetchData])
 
   const sorted = [...standings].sort(
     (a, b) =>
