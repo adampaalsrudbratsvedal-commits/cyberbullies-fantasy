@@ -180,19 +180,20 @@ function Section({
   const top3 = entries.slice(0, 3)
   const rest = entries.slice(3)
   const max = entries[0]?.value ?? 0
-  const colors =
+  const PALETTE =
     mode === 'win'
-      ? [TH.accent, TH.gold, TH.info, TH.muted]
-      : [TH.warn, '#fda4af', TH.gold, TH.muted]
+      ? ['#5eea93','#fbbf24','#7dd3fc','#f97316','#a78bfa','#fb7185','#34d399','#e879f9','#facc15','#38bdf8','#f43f5e','#22d3ee']
+      : ['#fb7185','#fda4af','#fbbf24','#f97316','#a78bfa','#5eea93','#34d399','#e879f9','#facc15','#38bdf8','#7dd3fc','#22d3ee']
 
-  // Build chart data — top 4 plotted; one row per round.
-  const top4Names = entries.slice(0, 4).map((e) => e.name)
+  // Build chart data — all players plotted; one row per round.
+  const allNames = entries.map((e) => e.name)
+  const colors = allNames.map((_, i) => PALETTE[i % PALETTE.length])
   const rounds = probHistory
     ? Object.keys(probHistory).map(Number).sort((a, b) => a - b)
     : []
   const chartData = rounds.map((r) => {
     const point = { round: `R${r}` }
-    top4Names.forEach((n) => {
+    allNames.forEach((n) => {
       const v = probHistory?.[r]?.[n]?.[valueKey]
       point[n] = v != null ? parseFloat((v * 100).toFixed(1)) : null
     })
@@ -285,7 +286,7 @@ function Section({
             style={{ background: TH.bg, border: `1px solid ${TH.border}` }}
           >
             {chartData.length > 0 ? (
-              <ProbLineChart data={chartData} players={top4Names} colors={colors} height={220} />
+              <ProbLineChart data={chartData} players={allNames} colors={colors} height={220} />
             ) : (
               <div
                 className="text-center py-12"
@@ -297,7 +298,7 @@ function Section({
           </div>
           {/* Legend */}
           <div className="flex flex-wrap gap-x-4 gap-y-2 px-1">
-            {top4Names.map((n, i) => {
+            {allNames.map((n, i) => {
               const lastPct = chartData[chartData.length - 1]?.[n]
               return (
                 <span
