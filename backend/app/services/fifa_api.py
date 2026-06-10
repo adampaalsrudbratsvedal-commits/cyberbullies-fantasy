@@ -116,21 +116,97 @@ async def fetch_groups() -> dict:
         return resp.json()
 
 
-async def fetch_fantasy_players(db=None) -> list:
-    """Fetch all FIFA Fantasy 2026 eligible players."""
-    data = await _get(f"{settings.fifa_base_url}/players.json", db)
-    success = data.get("success", data)
-    # API may wrap in "data", "players", or be a flat list
-    if isinstance(success, list):
-        return success
-    return success.get("players", success.get("data", []))
+async def fetch_wc_teams_with_players() -> list:
+    """
+    Fetch all WC 2026 national teams + their squad members from football-data.org.
+    Returns a flat list of player dicts with nationalTeamName injected.
+    """
+    api_key = settings.football_data_api_key
+    if not api_key:
+        raise Exception("FOOTBALL_DATA_API_KEY ikke satt i miljøvariabler")
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            "https://api.football-data.org/v4/competitions/WC/teams",
+            headers={"X-Auth-Token": api_key},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    POSITION_MAP = {
+        "Goalkeeper": (1, "Keeper"),
+        "Defence":    (2, "Forsvar"),
+        "Midfield":   (3, "Midtbane"),
+        "Offence":    (4, "Angrep"),
+    }
+
+    players = []
+    for team in data.get("teams", []):
+        team_id   = team.get("id")
+        team_name = team.get("name") or team.get("shortName", "")
+        for p in team.get("squad", []):
+            pos_raw  = p.get("position", "Midfield")
+            pos_id, pos_name = POSITION_MAP.get(pos_raw, (3, pos_raw))
+            players.append({
+                "id":               p.get("id"),
+                "name":             p.get("name", ""),
+                "shortName":        p.get("shortName") or p.get("name", ""),
+                "nationalTeamId":   team_id,
+                "nationalTeamName": team_name,
+                "positionId":       pos_id,
+                "positionName":     pos_name,
+                "price":            0.0,
+                "totalPoints":      0,
+            })
+    return players
+
+
+# ── FIFA Fantasy squad picks ──────────────────────────────────────────────────
+
+# Candidate paths to try when fetching a user's squad.
+# We try them in order and return the first success.
+_SQUAD_PATHS = [
+    "/team/{uid}",
+    "/picks/{uid}",
+    "/squad/{uid}",
+    "/team/{uid}/picks",
+    "/user/{uid}/team",
+    "/user/{uid}/squad",
+]
 
 
 async def fetch_user_squad(user_id: int, db=None) -> dict:
-    """Fetch a specific user's fantasy squad picks."""
-    data = await _get(f"{settings.fifa_base_url}/team/{user_id}", db)
-    success = data.get("success", data)
-    return success
+    """
+    Attempt to fetch a user's fantasy squad picks from the FIFA Fantasy API.
+    Tries several candidate URL patterns and returns the first successful response.
+    Raises the last exception if all fail.
+    """
+    last_exc = None
+    for path in _SQUAD_PATHS:
+        url = f"{settings.fifa_base_url}{path.format(uid=user_id)}"
+        try:
+            data = await _get(url, db)
+            success = data.get("success", data)
+            return {"_url_used": url, **success}
+        except Exception as e:
+            last_exc = e
+    raise last_exc
+
+
+async def probe_squad_endpoints(user_id: int, db=None) -> dict:
+    """
+    Debug helper: try all candidate squad endpoints and report status/response for each.
+    """
+    results = {}
+    for path in _SQUAD_PATHS:
+        url = f"{settings.fifa_base_url}{path.format(uid=user_id)}"
+        try:
+            data = await _get(url, db)
+            results[url] = {"status": "ok", "keys": list(data.keys()), "sample": str(data)[:300]}
+        except Exception as e:
+            results[url] = {"status": "error", "error": str(e)}
+    return results
 
 
 async def fetch_scorers() -> dict:

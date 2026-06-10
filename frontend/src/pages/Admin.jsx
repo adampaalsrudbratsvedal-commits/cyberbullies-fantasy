@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../AuthContext'
-import { triggerSync, syncFantasyPlayers, syncFantasySquads, debugFantasyPlayers } from '../api'
+import { triggerSync, syncFantasyPlayers, syncFantasySquads, debugFantasyPlayers, debugFantasySquad, getFantasyDbStats } from '../api'
 import { Navigate } from 'react-router-dom'
 
 function SyncCard({ title, description, buttonLabel, onSync, status, syncing }) {
@@ -49,6 +49,10 @@ export default function Admin() {
 
   const [debugLoading, setDebugLoading]     = useState(false)
   const [debugData, setDebugData]           = useState(null)
+  const [probeUserId, setProbeUserId]       = useState('')
+  const [probeLoading, setProbeLoading]     = useState(false)
+  const [probeData, setProbeData]           = useState(null)
+  const [dbStats, setDbStats]               = useState(null)
 
   if (loading) return null
   if (!user?.is_admin) return <Navigate to="/" replace />
@@ -125,6 +129,31 @@ export default function Admin() {
     }
   }
 
+  // ── Debug: probe squad endpoints for a user ID ──────────────────────────────
+  const handleProbeSquad = async () => {
+    if (!probeUserId) return
+    setProbeLoading(true)
+    setProbeData(null)
+    try {
+      const r = await debugFantasySquad(probeUserId)
+      setProbeData(r.data)
+    } catch (e) {
+      setProbeData({ error: e.message })
+    } finally {
+      setProbeLoading(false)
+    }
+  }
+
+  // ── DB stats ────────────────────────────────────────────────────────────────
+  const handleDbStats = async () => {
+    try {
+      const r = await getFantasyDbStats()
+      setDbStats(r.data)
+    } catch (e) {
+      setDbStats({ error: e.message })
+    }
+  }
+
   return (
     <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
       <h1 className="text-2xl font-bold text-white">Admin</h1>
@@ -162,24 +191,73 @@ export default function Admin() {
       {/* ── 4. Debug ── */}
       <section className="bg-slate-800 rounded-lg border border-slate-700 p-6 space-y-4">
         <div>
-          <h2 className="text-white font-semibold mb-1">Debug — FIFA Fantasy API</h2>
+          <h2 className="text-white font-semibold mb-1">Debug — API & Database</h2>
           <p className="text-slate-400 text-sm">
-            Se rå API-respons for å sjekke at feltnavnene stemmer. Nyttig hvis sync returnerer 0 spillere.
+            Verktøy for å sjekke hva som er lagret og hvilke API-endepunkter som fungerer.
           </p>
         </div>
+
+        {/* DB stats */}
+        <button
+          onClick={handleDbStats}
+          className="w-full bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
+        >
+          Vis DB-statistikk
+        </button>
+        {dbStats && (
+          <div className="text-sm text-slate-300 bg-black/30 rounded p-3 space-y-1">
+            <div>Spillere i DB: <span className="text-green-300 font-bold">{dbStats.players_in_db ?? '—'}</span></div>
+            <div>Picks i DB: <span className="text-green-300 font-bold">{dbStats.picks_in_db ?? '—'}</span></div>
+            <div>Brukere med picks: <span className="text-green-300 font-bold">{dbStats.users_with_picks ?? '—'}</span></div>
+            {dbStats.error && <div className="text-red-400">{dbStats.error}</div>}
+          </div>
+        )}
+
+        {/* Player data sample */}
         <button
           onClick={handleDebugPlayers}
           disabled={debugLoading}
-          className="w-full bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors"
+          className="w-full bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
         >
-          {debugLoading ? 'Henter…' : 'Vis rå spillerdata (5 første)'}
+          {debugLoading ? 'Henter…' : 'Vis spillerdata fra API (5 første)'}
         </button>
         {debugData && (
           <pre
             className="text-xs text-green-300 bg-black/40 rounded p-3 overflow-x-auto"
-            style={{ maxHeight: 320 }}
+            style={{ maxHeight: 260 }}
           >
             {JSON.stringify(debugData, null, 2)}
+          </pre>
+        )}
+
+        {/* Squad endpoint probe */}
+        <div>
+          <p className="text-slate-400 text-xs mb-2">
+            Finn riktig FIFA Fantasy squad-endepunkt: lim inn en userId fra standings-API-et.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={probeUserId}
+              onChange={(e) => setProbeUserId(e.target.value)}
+              placeholder="userId (tall)"
+              className="flex-1 bg-slate-700 border border-slate-600 text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-slate-400"
+            />
+            <button
+              onClick={handleProbeSquad}
+              disabled={probeLoading || !probeUserId}
+              className="bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+            >
+              {probeLoading ? '…' : 'Probe'}
+            </button>
+          </div>
+        </div>
+        {probeData && (
+          <pre
+            className="text-xs text-green-300 bg-black/40 rounded p-3 overflow-x-auto"
+            style={{ maxHeight: 320 }}
+          >
+            {JSON.stringify(probeData, null, 2)}
           </pre>
         )}
       </section>

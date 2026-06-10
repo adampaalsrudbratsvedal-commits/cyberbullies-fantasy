@@ -4,7 +4,7 @@ Fantasy squad endpoints — store/retrieve player pools and user picks.
 import traceback
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func as sqlfunc
 
 from ..database import get_db
 from ..models.fantasy_player import FantasyPlayer
@@ -12,8 +12,9 @@ from ..models.fantasy_squad_pick import FantasySquadPick
 from ..models.round_score import RoundScore
 from ..services.fifa_api import (
     fetch_standings,
-    fetch_fantasy_players,
+    fetch_wc_teams_with_players,
     fetch_user_squad,
+    probe_squad_endpoints,
 )
 from .auth import get_current_user
 from ..models.user import User
@@ -31,58 +32,66 @@ def require_admin(current_user: User = Depends(get_current_user)):
 
 @router.get("/players")
 def get_players(db: Session = Depends(get_db)):
-    """Return all fantasy players stored in the DB."""
-    players = db.query(FantasyPlayer).order_by(FantasyPlayer.position_id, FantasyPlayer.name).all()
+    """Return all WC players stored in the DB."""
+    players = (
+        db.query(FantasyPlayer)
+        .order_by(FantasyPlayer.national_team_name, FantasyPlayer.position_id, FantasyPlayer.name)
+        .all()
+    )
     return {
+        "count": len(players),
         "players": [
             {
-                "id": p.id,
-                "name": p.name,
-                "shortName": p.short_name,
-                "nationalTeamId": p.national_team_id,
+                "id":               p.id,
+                "name":             p.name,
+                "shortName":        p.short_name,
+                "nationalTeamId":   p.national_team_id,
                 "nationalTeamName": p.national_team_name,
-                "positionId": p.position_id,
-                "positionName": p.position_name,
-                "price": p.price,
-                "totalPoints": p.total_points,
+                "positionId":       p.position_id,
+                "positionName":     p.position_name,
+                "price":            p.price,
+                "totalPoints":      p.total_points,
             }
             for p in players
-        ]
+        ],
     }
 
 
 @router.get("/squads")
 def get_squads(db: Session = Depends(get_db)):
     """Return every league participant's squad with joined player data."""
-    picks = db.query(FantasySquadPick).order_by(
-        FantasySquadPick.fifa_username,
-        FantasySquadPick.is_starting.desc(),
-        FantasySquadPick.position_slot,
-    ).all()
+    picks = (
+        db.query(FantasySquadPick)
+        .order_by(
+            FantasySquadPick.fifa_username,
+            FantasySquadPick.is_starting.desc(),
+            FantasySquadPick.position_slot,
+        )
+        .all()
+    )
 
-    # Build player lookup
     player_ids = {p.player_id for p in picks}
-    players = {
+    player_map = {
         pl.id: pl
         for pl in db.query(FantasyPlayer).filter(FantasyPlayer.id.in_(player_ids)).all()
     }
 
     result: dict[str, list] = {}
     for pick in picks:
-        pl = players.get(pick.player_id)
+        pl = player_map.get(pick.player_id)
         result.setdefault(pick.fifa_username, []).append({
-            "playerId": pick.player_id,
-            "positionSlot": pick.position_slot,
-            "isCaptain": pick.is_captain,
-            "isViceCaptain": pick.is_vice_captain,
-            "isStarting": pick.is_starting,
-            "name": pl.name if pl else f"Ukjent ({pick.player_id})",
-            "shortName": pl.short_name if pl else "",
-            "nationalTeamName": pl.national_team_name if pl else "",
-            "positionId": pl.position_id if pl else None,
-            "positionName": pl.position_name if pl else "",
-            "price": pl.price if pl else None,
-            "totalPoints": pl.total_points if pl else 0,
+            "playerId":        pick.player_id,
+            "positionSlot":    pick.position_slot,
+            "isCaptain":       pick.is_captain,
+            "isViceCaptain":   pick.is_vice_captain,
+            "isStarting":      pick.is_starting,
+            "name":            pl.name             if pl else f"Ukjent ({pick.player_id})",
+            "shortName":       pl.short_name        if pl else "",
+            "nationalTeamName":pl.national_team_name if pl else "",
+            "positionId":      pl.position_id       if pl else None,
+            "positionName":    pl.position_name     if pl else "",
+            "price":           pl.price             if pl else None,
+            "totalPoints":     pl.total_points      if pl else 0,
         })
 
     return {"squads": result}
@@ -96,47 +105,45 @@ async def sync_players(
     _: User = Depends(require_admin),
 ):
     """
-    Admin: fetch all FIFA Fantasy players from the live API and upsert into DB.
+    Admin: fetch all WC 2026 squad members from football-data.org and upsert into DB.
+    Uses /v4/competitions/WC/teams — free tier, no cookies needed.
     """
     try:
-        raw = await fetch_fantasy_players(db)
+        raw = await fetch_wc_teams_with_players()
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"FIFA API feil: {e}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"football-data.org feil: {e}\n{traceback.format_exc()}",
+        )
 
     if not raw:
-        return {"synced": 0, "message": "API returnerte 0 spillere — sjekk cookies"}
+        return {"synced": 0, "message": "API returnerte 0 spillere"}
 
-    pos_map = {1: "Keeper", 2: "Forsvar", 3: "Midtbane", 4: "Angrep"}
     synced = 0
-
-    for raw_p in raw:
-        pid = raw_p.get("id") or raw_p.get("playerId")
+    for p in raw:
+        pid = p.get("id")
         if not pid:
             continue
 
         existing = db.get(FantasyPlayer, pid)
-        pos_id = raw_p.get("positionId") or raw_p.get("position", {}).get("id")
-
         if existing:
-            existing.name = raw_p.get("name", existing.name)
-            existing.short_name = raw_p.get("shortName", existing.short_name)
-            existing.national_team_id = raw_p.get("teamId") or raw_p.get("nationalTeam", {}).get("id")
-            existing.national_team_name = raw_p.get("teamName") or raw_p.get("nationalTeam", {}).get("name")
-            existing.position_id = pos_id
-            existing.position_name = pos_map.get(pos_id, raw_p.get("positionName", ""))
-            existing.price = raw_p.get("price", existing.price)
-            existing.total_points = raw_p.get("totalPoints", existing.total_points) or 0
+            existing.name              = p.get("name", existing.name)
+            existing.short_name        = p.get("shortName", existing.short_name)
+            existing.national_team_id  = p.get("nationalTeamId", existing.national_team_id)
+            existing.national_team_name= p.get("nationalTeamName", existing.national_team_name)
+            existing.position_id       = p.get("positionId", existing.position_id)
+            existing.position_name     = p.get("positionName", existing.position_name)
         else:
             db.add(FantasyPlayer(
                 id=pid,
-                name=raw_p.get("name", ""),
-                short_name=raw_p.get("shortName"),
-                national_team_id=raw_p.get("teamId") or raw_p.get("nationalTeam", {}).get("id"),
-                national_team_name=raw_p.get("teamName") or raw_p.get("nationalTeam", {}).get("name"),
-                position_id=pos_id,
-                position_name=pos_map.get(pos_id, raw_p.get("positionName", "")),
-                price=raw_p.get("price", 0.0),
-                total_points=raw_p.get("totalPoints", 0) or 0,
+                name=p["name"],
+                short_name=p.get("shortName", p["name"]),
+                national_team_id=p.get("nationalTeamId"),
+                national_team_name=p.get("nationalTeamName", ""),
+                position_id=p.get("positionId", 3),
+                position_name=p.get("positionName", ""),
+                price=0.0,
+                total_points=0,
             ))
         synced += 1
 
@@ -151,25 +158,21 @@ async def sync_squads(
 ):
     """
     Admin: fetch squad picks for every league participant and store in DB.
-    Requires players to be synced first (sync-players).
+    Uses FIFA Fantasy API — requires valid X-SID cookie in backend env.
     """
-    # Get all league participants with their user IDs
     try:
         ranks = await fetch_standings(db)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Standings henting feilet: {e}")
+        raise HTTPException(status_code=502, detail=f"Standings feilet: {e}")
 
-    # Current round for tagging
-    from sqlalchemy import func as sqlfunc
     current_round = db.query(sqlfunc.max(RoundScore.round_id)).scalar() or 0
-
-    errors = []
+    errors: list[str] = []
     total_picks = 0
 
     for rank in ranks:
-        user_id = rank.get("userId")
+        user_id  = rank.get("userId")
         username = rank.get("userName", f"user_{user_id}")
-        team_id = rank.get("teamId") or user_id   # some APIs expose teamId separately
+        team_id  = rank.get("teamId") or user_id
 
         if not user_id:
             continue
@@ -180,7 +183,6 @@ async def sync_squads(
             errors.append(f"{username}: {e}")
             continue
 
-        # Picks can be under different keys
         picks_raw = (
             squad_data.get("picks")
             or squad_data.get("players")
@@ -189,25 +191,25 @@ async def sync_squads(
         )
 
         if not picks_raw:
-            errors.append(f"{username}: ingen picks i respons (keys: {list(squad_data.keys())})")
+            errors.append(
+                f"{username}: ingen picks (keys: {list(k for k in squad_data if k != '_url_used')})"
+            )
             continue
 
-        # Remove old picks for this user
         db.query(FantasySquadPick).filter_by(fifa_user_id=user_id).delete()
 
         for slot_idx, pick in enumerate(picks_raw, start=1):
             player_id = pick.get("playerId") or pick.get("id")
             if not player_id:
                 continue
-
             db.add(FantasySquadPick(
                 fifa_user_id=user_id,
                 fifa_username=username,
                 player_id=player_id,
                 position_slot=pick.get("position", slot_idx),
-                is_captain=pick.get("isCaptain", pick.get("captain", False)) or False,
-                is_vice_captain=pick.get("isViceCaptain", pick.get("viceCaptain", False)) or False,
-                is_starting=pick.get("isStarting", pick.get("active", slot_idx <= 11)) or False,
+                is_captain=bool(pick.get("isCaptain") or pick.get("captain")),
+                is_vice_captain=bool(pick.get("isViceCaptain") or pick.get("viceCaptain")),
+                is_starting=bool(pick.get("isStarting", pick.get("active", slot_idx <= 11))),
                 synced_round=current_round,
             ))
             total_picks += 1
@@ -220,21 +222,42 @@ async def sync_squads(
     }
 
 
-@router.get("/debug-squad/{user_id}")
-async def debug_squad(user_id: int, db: Session = Depends(get_db)):
-    """Debug: return raw squad response from FIFA API for a given user ID."""
-    try:
-        data = await fetch_user_squad(user_id, db)
-        return {"raw": data}
-    except Exception as e:
-        return {"error": str(e), "traceback": traceback.format_exc()}
-
+# ─────────────────────────── DEBUG ENDPOINTS ───────────────────────────────
 
 @router.get("/debug-players")
 async def debug_players(db: Session = Depends(get_db)):
-    """Debug: return first 5 raw players from FIFA Fantasy API."""
+    """Debug: return sample from football-data.org WC teams endpoint."""
     try:
-        raw = await fetch_fantasy_players(db)
-        return {"count": len(raw), "sample": raw[:5]}
+        raw = await fetch_wc_teams_with_players()
+        return {
+            "source": "football-data.org /v4/competitions/WC/teams",
+            "total_players": len(raw),
+            "sample": raw[:5],
+        }
     except Exception as e:
         return {"error": str(e), "traceback": traceback.format_exc()}
+
+
+@router.get("/debug-squad/{user_id}")
+async def debug_squad(user_id: int, db: Session = Depends(get_db)):
+    """
+    Debug: probe all candidate FIFA Fantasy squad endpoints for a given user ID.
+    Run this to find out which URL pattern returns squad data.
+    """
+    try:
+        results = await probe_squad_endpoints(user_id, db)
+        return {"user_id": user_id, "probe_results": results}
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
+
+
+@router.get("/db-stats")
+def db_stats(db: Session = Depends(get_db)):
+    """Quick summary of what's currently stored."""
+    return {
+        "players_in_db": db.query(sqlfunc.count(FantasyPlayer.id)).scalar(),
+        "picks_in_db":   db.query(sqlfunc.count(FantasySquadPick.id)).scalar(),
+        "users_with_picks": db.query(
+            sqlfunc.count(sqlfunc.distinct(FantasySquadPick.fifa_username))
+        ).scalar(),
+    }
