@@ -198,7 +198,10 @@ async def sync_players(
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ):
-    """Fetch all WC 2026 squad members from football-data.org and upsert into DB."""
+    """
+    Fetch all WC 2026 squad members from football-data.org and bulk-upsert into DB.
+    Uses a single INSERT … ON CONFLICT DO UPDATE to stay well within Vercel's 10s limit.
+    """
     try:
         raw = await fetch_wc_teams_with_players()
     except Exception as e:
@@ -210,35 +213,45 @@ async def sync_players(
     if not raw:
         return {"synced": 0, "message": "API returnerte 0 spillere"}
 
-    synced = 0
+    # Build rows list — skip entries without an id
+    rows = []
     for p in raw:
         pid = p.get("id")
         if not pid:
             continue
-        existing = db.get(FantasyPlayer, pid)
-        if existing:
-            existing.name               = p.get("name", existing.name)
-            existing.short_name         = p.get("shortName", existing.short_name)
-            existing.national_team_id   = p.get("nationalTeamId", existing.national_team_id)
-            existing.national_team_name = normalise_team(p.get("nationalTeamName", existing.national_team_name or ""))
-            existing.position_id        = p.get("positionId", existing.position_id)
-            existing.position_name      = p.get("positionName", existing.position_name)
-        else:
-            db.add(FantasyPlayer(
-                id=pid,
-                name=p["name"],
-                short_name=p.get("shortName", p["name"]),
-                national_team_id=p.get("nationalTeamId"),
-                national_team_name=normalise_team(p.get("nationalTeamName", "")),
-                position_id=p.get("positionId", 3),
-                position_name=p.get("positionName", ""),
-                price=0.0,
-                total_points=0,
-            ))
-        synced += 1
+        rows.append({
+            "id":                pid,
+            "name":              p.get("name", ""),
+            "short_name":        p.get("shortName") or p.get("name", ""),
+            "national_team_id":  p.get("nationalTeamId"),
+            "national_team_name": normalise_team(p.get("nationalTeamName", "")),
+            "position_id":       p.get("positionId", 3),
+            "position_name":     p.get("positionName", ""),
+            "price":             0.0,
+            "total_points":      0,
+        })
 
+    if not rows:
+        return {"synced": 0, "message": "Ingen gyldige spillere i API-respons"}
+
+    # Single bulk upsert — one DB round-trip instead of N×2
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    stmt = pg_insert(FantasyPlayer).values(rows)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["id"],
+        set_={
+            "name":               stmt.excluded.name,
+            "short_name":         stmt.excluded.short_name,
+            "national_team_id":   stmt.excluded.national_team_id,
+            "national_team_name": stmt.excluded.national_team_name,
+            "position_id":        stmt.excluded.position_id,
+            "position_name":      stmt.excluded.position_name,
+        },
+    )
+    db.execute(stmt)
     db.commit()
-    return {"synced": synced, "total": len(raw)}
+
+    return {"synced": len(rows), "total": len(raw)}
 
 
 @router.post("/sync-squads")
