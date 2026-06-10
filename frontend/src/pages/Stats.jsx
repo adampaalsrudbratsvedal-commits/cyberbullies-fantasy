@@ -55,12 +55,6 @@ function PodiumRow({ name, prob, exp, color, rank }) {
         >
           {name}
         </div>
-        <div
-          className="font-mono mt-0.5 uppercase"
-          style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.04em' }}
-        >
-          FORVENTET <span style={{ color: TH.muted }}>{Math.round(exp)}</span> P
-        </div>
       </div>
       <div className="text-right">
         <div
@@ -90,12 +84,6 @@ function ProbRow({ name, prob, exp, color, max }) {
       <div>
         <div className="flex items-baseline justify-between mb-1.5">
           <span style={{ fontSize: 12.5, color: TH.text, fontWeight: 500 }}>{name}</span>
-          <span
-            className="font-mono"
-            style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.04em' }}
-          >
-            {Math.round(exp)} p
-          </span>
         </div>
         <div
           className="h-1 rounded-full overflow-hidden"
