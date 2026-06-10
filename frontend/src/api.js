@@ -37,5 +37,6 @@ export const syncFantasySquads = () => api.post('/fantasy/sync-squads')
 export const debugFantasySquad = (userId) => api.get(`/fantasy/debug-squad/${userId}`)
 export const debugFantasyPlayers = () => api.get('/fantasy/debug-players')
 export const getFantasyDbStats = () => api.get('/fantasy/db-stats')
+export const getAllMatchPicks = () => api.get('/fantasy/all-match-picks')
 
 export default api

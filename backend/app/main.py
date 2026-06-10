@@ -11,6 +11,23 @@ try:
 except Exception as e:
     print(f"[DB] create_all failed (tables may already exist): {e}")
 
+# Idempotent column migrations for tables that may already exist
+_MIGRATIONS = [
+    "ALTER TABLE fantasy_squad_picks ADD COLUMN IF NOT EXISTS player_name VARCHAR",
+    "ALTER TABLE fantasy_squad_picks ADD COLUMN IF NOT EXISTS national_team_name VARCHAR",
+]
+try:
+    from sqlalchemy import text as _text
+    with engine.connect() as _conn:
+        for _sql in _MIGRATIONS:
+            try:
+                _conn.execute(_text(_sql))
+            except Exception as _e:
+                print(f"[DB] Migration skipped ({_sql[:60]}…): {_e}")
+        _conn.commit()
+except Exception as _e:
+    print(f"[DB] Migration block failed: {_e}")
+
 app = FastAPI(title="Cyberbullies Fantasy")
 
 app.add_middleware(

@@ -162,10 +162,39 @@ async def fetch_wc_teams_with_players() -> list:
     return players
 
 
+# ── National team name normalisation ─────────────────────────────────────────
+# Aliases used by FIFA Fantasy that differ from football-data.org names.
+_TEAM_ALIASES: dict[str, str] = {
+    "USA":                        "United States",
+    "United States of America":   "United States",
+    "US":                         "United States",
+    "Korea Republic":             "South Korea",
+    "Republic of Korea":          "South Korea",
+    "IR Iran":                    "Iran",
+    "Ivory Coast":                "Côte d'Ivoire",
+    "Cote d'Ivoire":              "Côte d'Ivoire",
+    "Türkiye":                    "Turkey",
+    "Czechia":                    "Czech Republic",
+    "Bosnia-Herzegovina":         "Bosnia and Herzegovina",
+    "Cabo Verde":                 "Cape Verde Islands",
+    "Cape Verde":                 "Cape Verde Islands",
+    "Trinidad & Tobago":          "Trinidad and Tobago",
+    "DR Congo":                   "Congo DR",
+    "DRC":                        "Congo DR",
+    "China PR":                   "China",
+}
+
+
+def normalise_team(name: str) -> str:
+    """Return canonical national team name for cross-source matching."""
+    if not name:
+        return name
+    return _TEAM_ALIASES.get(name, name)
+
+
 # ── FIFA Fantasy squad picks ──────────────────────────────────────────────────
 
 # Candidate paths to try when fetching a user's squad.
-# We try them in order and return the first success.
 _SQUAD_PATHS = [
     "/team/{uid}",
     "/picks/{uid}",

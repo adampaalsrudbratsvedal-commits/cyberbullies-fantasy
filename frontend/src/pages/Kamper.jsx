@@ -2,7 +2,7 @@
 // Auto-refresher hvert 60. sekund
 
 import { useEffect, useState, useCallback } from 'react'
-import { getFixtures } from '../api'
+import { getFixtures, getAllMatchPicks } from '../api'
 import Pitch from '../components/Pitch'
 import { TH } from '../lib/theme'
 
@@ -23,6 +23,139 @@ const FLAGS = {
   'Austria': 'at', 'Jordan': 'jo', 'Portugal': 'pt', 'Congo DR': 'cd',
   'England': 'gb-eng', 'Croatia': 'hr', 'Ghana': 'gh', 'Panama': 'pa',
   'Uzbekistan': 'uz', 'Colombia': 'co',
+}
+
+// ── Team name normalisation (mirrors backend) ─────────────────────────────
+const TEAM_ALIASES = {
+  'USA': 'United States', 'United States of America': 'United States',
+  'Korea Republic': 'South Korea', 'Republic of Korea': 'South Korea',
+  'IR Iran': 'Iran', 'Ivory Coast': "Côte d'Ivoire", "Cote d'Ivoire": "Côte d'Ivoire",
+  'Türkiye': 'Turkey', 'Czechia': 'Czech Republic',
+  'Bosnia-Herzegovina': 'Bosnia and Herzegovina',
+  'Cabo Verde': 'Cape Verde Islands', 'Cape Verde': 'Cape Verde Islands',
+  'DR Congo': 'Congo DR', 'DRC': 'Congo DR',
+}
+function normTeam(name) { return TEAM_ALIASES[name] || name || '' }
+
+// ── Position badge colours ────────────────────────────────────────────────
+const POS_COL = {
+  1: '#fbbf24', // GK gold
+  2: '#3b82f6', // DEF blue
+  3: '#10b981', // MID green
+  4: '#ef4444', // FWD red
+}
+
+// ── Fantasy picks strip for one match ─────────────────────────────────────
+function MatchPicks({ homeTeam, awayTeam, byTeam }) {
+  const [open, setOpen] = useState(false)
+
+  const homeNorm = normTeam(homeTeam)
+  const awayNorm = normTeam(awayTeam)
+
+  // Merge picks for both teams per user
+  const homeMap = byTeam[homeNorm] || {}
+  const awayMap = byTeam[awayNorm] || {}
+  const allUsers = [...new Set([...Object.keys(homeMap), ...Object.keys(awayMap)])].sort()
+
+  if (allUsers.length === 0) return null
+
+  // Count total players for summary badge
+  const totalPlayers = allUsers.reduce((n, u) => {
+    return n + (homeMap[u]?.length || 0) + (awayMap[u]?.length || 0)
+  }, 0)
+
+  return (
+    <div style={{ borderTop: `1px solid ${TH.border}`, marginTop: 8 }}>
+      {/* Toggler row */}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '7px 0 4px',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+        }}
+      >
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: TH.muted, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          Fantasy-spillere i kampen
+        </span>
+        <span style={{
+          fontSize: 10,
+          background: TH.accent + '22',
+          color: TH.accent,
+          borderRadius: 99,
+          padding: '1px 7px',
+          fontWeight: 700,
+        }}>
+          {totalPlayers} {open ? '▲' : '▼'}
+        </span>
+      </button>
+
+      {open && (
+        <div style={{ paddingBottom: 6, display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {allUsers.map((user) => {
+            const homePicks = homeMap[user] || []
+            const awayPicks = awayMap[user] || []
+            const allPicks = [
+              ...homePicks.map(p => ({ ...p, side: 'home' })),
+              ...awayPicks.map(p => ({ ...p, side: 'away' })),
+            ]
+            return (
+              <div key={user} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                {/* Username */}
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: TH.muted,
+                  minWidth: 72,
+                  paddingTop: 2,
+                  letterSpacing: '0.03em',
+                  flexShrink: 0,
+                }}>
+                  {user}
+                </span>
+                {/* Players */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {allPicks.map((p, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: p.side === 'home' ? '#93c5fd' : '#fca5a5',
+                        background: (p.side === 'home' ? '#3b82f6' : '#ef4444') + '18',
+                        border: `1px solid ${(p.side === 'home' ? '#3b82f6' : '#ef4444')}33`,
+                        borderRadius: 4,
+                        padding: '2px 6px',
+                      }}
+                    >
+                      {p.isCaptain && (
+                        <span style={{ fontSize: 9, background: '#fbbf24', color: '#000', borderRadius: 3, padding: '0 3px', fontWeight: 800 }}>C</span>
+                      )}
+                      {p.isViceCaptain && (
+                        <span style={{ fontSize: 9, background: '#94a3b8', color: '#000', borderRadius: 3, padding: '0 3px', fontWeight: 800 }}>VC</span>
+                      )}
+                      {p.positionId && (
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: POS_COL[p.positionId] || '#666', flexShrink: 0 }} />
+                      )}
+                      {p.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function Flag({ name }) {
@@ -79,7 +212,7 @@ function groupByRound(fixtures) {
 
 // ── Kampkort ──────────────────────────────────────────────────
 
-function MatchCard({ match }) {
+function MatchCard({ match, byTeam }) {
   const live = isLive(match.status)
   const finished = isFinished(match.status)
 
@@ -200,6 +333,11 @@ function MatchCard({ match }) {
             <span style={{ fontSize: 9.5, color: TH.dim }}>{formatDate(match.date)}</span>
           </div>
         )}
+
+        {/* Fantasy picks for this match */}
+        {byTeam && (
+          <MatchPicks homeTeam={homeTeam} awayTeam={awayTeam} byTeam={byTeam} />
+        )}
       </div>
     </div>
   )
@@ -216,7 +354,7 @@ const STAGE_COLORS = {
   F: '#f43f5e',
 }
 
-function RoundSection({ roundId, stage, stageLabel, matches }) {
+function RoundSection({ roundId, stage, stageLabel, matches, byTeam }) {
   const liveCount = matches.filter((m) => isLive(m.status)).length
   const color = STAGE_COLORS[stage] || TH.accent
 
@@ -250,7 +388,7 @@ function RoundSection({ roundId, stage, stageLabel, matches }) {
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {sorted.map((m) => (
-          <MatchCard key={m.id} match={m} />
+          <MatchCard key={m.id} match={m} byTeam={byTeam || {}} />
         ))}
       </div>
     </section>
@@ -264,6 +402,7 @@ export default function Kamper() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(null)
+  const [byTeam, setByTeam] = useState({})   // team_norm → { username → [picks] }
 
   const load = useCallback(() => {
     getFixtures()
@@ -281,6 +420,13 @@ export default function Kamper() {
     const interval = setInterval(load, 60_000)
     return () => clearInterval(interval)
   }, [load])
+
+  // Fetch fantasy picks once (no auto-refresh needed)
+  useEffect(() => {
+    getAllMatchPicks()
+      .then((r) => setByTeam(r.data?.byTeam ?? {}))
+      .catch(() => {})   // silent — picks section just won't show
+  }, [])
 
   const grouped = groupByRound(fixtures.filter(m => m.homeSquadName && m.awaySquadName))
   const roundIds = Object.keys(grouped).sort((a, b) => Number(a) - Number(b))
@@ -358,6 +504,7 @@ export default function Kamper() {
                   stage={stage}
                   stageLabel={stageLabel}
                   matches={matches}
+                  byTeam={byTeam}
                 />
               )
             })}
