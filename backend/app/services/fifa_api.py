@@ -208,19 +208,26 @@ _SQUAD_PATHS = [
 async def fetch_user_squad(user_id: int, db=None) -> dict:
     """
     Attempt to fetch a user's fantasy squad picks from the FIFA Fantasy API.
-    Tries several candidate URL patterns and returns the first successful response.
-    Raises the last exception if all fail.
+    Tries candidate URL patterns with a short per-attempt timeout so the caller
+    gets a fast failure rather than hanging for minutes.
     """
+    await token_manager.ensure_fresh(db)
     last_exc = None
-    for path in _SQUAD_PATHS:
-        url = f"{settings.fifa_base_url}{path.format(uid=user_id)}"
-        try:
-            data = await _get(url, db)
-            success = data.get("success", data)
-            return {"_url_used": url, **success}
-        except Exception as e:
-            last_exc = e
-    raise last_exc
+    async with httpx.AsyncClient() as client:
+        for path in _SQUAD_PATHS:
+            url = f"{settings.fifa_base_url}{path.format(uid=user_id)}"
+            try:
+                resp = await client.get(url, headers=_headers(), timeout=5)
+                if resp.status_code == 404:
+                    last_exc = Exception(f"404 {url}")
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                success = data.get("success", data)
+                return {"_url_used": url, **success}
+            except Exception as e:
+                last_exc = e
+    raise last_exc or Exception("Alle squad-endepunkter feilet")
 
 
 async def probe_squad_endpoints(user_id: int, db=None) -> dict:

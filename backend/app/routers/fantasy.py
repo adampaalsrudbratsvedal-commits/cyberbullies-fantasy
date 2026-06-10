@@ -261,8 +261,7 @@ async def sync_squads(
 ):
     """
     Fetch squad picks for every league participant from FIFA Fantasy API.
-    Stores player_name and national_team_name directly on each pick so we
-    can match against fixtures without needing ID cross-references.
+    Uses bulk DB operations to stay within Vercel's 10s function timeout.
     """
     try:
         ranks = await fetch_standings(db)
@@ -270,8 +269,15 @@ async def sync_squads(
         raise HTTPException(status_code=502, detail=f"Standings feilet: {e}")
 
     current_round = db.query(sqlfunc.max(RoundScore.round_id)).scalar() or 0
+
+    # Pre-load all known players in ONE query for fast team-name lookup
+    player_lookup: dict[int, FantasyPlayer] = {
+        p.id: p for p in db.query(FantasyPlayer).all()
+    }
+
     errors: list[str] = []
-    total_picks = 0
+    rows: list[dict] = []
+    processed_user_ids: list[int] = []
 
     for rank in ranks:
         user_id  = rank.get("userId")
@@ -301,53 +307,56 @@ async def sync_squads(
             )
             continue
 
-        db.query(FantasySquadPick).filter_by(fifa_user_id=user_id).delete()
+        processed_user_ids.append(user_id)
 
         for slot_idx, pick in enumerate(picks_raw, start=1):
             player_id = pick.get("playerId") or pick.get("id")
             if not player_id:
                 continue
 
-            # Extract name variants the API might use
             p_name = (
-                pick.get("playerName")
-                or pick.get("name")
-                or pick.get("shortName")
-                or pick.get("displayName")
+                pick.get("playerName") or pick.get("name")
+                or pick.get("shortName") or pick.get("displayName")
             )
-            # Extract national team variants
             raw_team = (
-                pick.get("teamName")
-                or pick.get("nationalTeam")
-                or pick.get("team", {}).get("name") if isinstance(pick.get("team"), dict) else None
+                pick.get("teamName") or pick.get("nationalTeam")
+                or (pick.get("team", {}).get("name") if isinstance(pick.get("team"), dict) else None)
                 or pick.get("countryName")
             )
             norm_team = normalise_team(raw_team) if raw_team else None
 
-            # If team not in pick, try to look up from players table
+            # Fall back to pre-loaded dict — no extra DB call per pick
             if not norm_team:
-                pl = db.get(FantasyPlayer, player_id)
+                pl = player_lookup.get(player_id)
                 if pl and pl.national_team_name:
                     norm_team = pl.national_team_name
 
-            db.add(FantasySquadPick(
-                fifa_user_id=user_id,
-                fifa_username=username,
-                player_id=player_id,
-                player_name=p_name,
-                national_team_name=norm_team,
-                position_slot=pick.get("position", slot_idx),
-                is_captain=bool(pick.get("isCaptain") or pick.get("captain")),
-                is_vice_captain=bool(pick.get("isViceCaptain") or pick.get("viceCaptain")),
-                is_starting=bool(pick.get("isStarting", pick.get("active", slot_idx <= 11))),
-                synced_round=current_round,
-            ))
-            total_picks += 1
+            rows.append({
+                "fifa_user_id":      user_id,
+                "fifa_username":     username,
+                "player_id":         player_id,
+                "player_name":       p_name,
+                "national_team_name":norm_team,
+                "position_slot":     pick.get("position", slot_idx),
+                "is_captain":        bool(pick.get("isCaptain") or pick.get("captain")),
+                "is_vice_captain":   bool(pick.get("isViceCaptain") or pick.get("viceCaptain")),
+                "is_starting":       bool(pick.get("isStarting", pick.get("active", slot_idx <= 11))),
+                "synced_round":      current_round,
+            })
+
+    # One DELETE for all processed users, then one bulk INSERT
+    if processed_user_ids:
+        db.query(FantasySquadPick).filter(
+            FantasySquadPick.fifa_user_id.in_(processed_user_ids)
+        ).delete(synchronize_session=False)
+
+    if rows:
+        db.bulk_insert_mappings(FantasySquadPick, rows)
 
     db.commit()
     return {
         "users_processed": len(ranks),
-        "total_picks": total_picks,
+        "total_picks": len(rows),
         "errors": errors,
     }
 
