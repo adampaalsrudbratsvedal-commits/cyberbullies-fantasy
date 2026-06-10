@@ -116,6 +116,23 @@ async def fetch_groups() -> dict:
         return resp.json()
 
 
+async def fetch_fantasy_players(db=None) -> list:
+    """Fetch all FIFA Fantasy 2026 eligible players."""
+    data = await _get(f"{settings.fifa_base_url}/players.json", db)
+    success = data.get("success", data)
+    # API may wrap in "data", "players", or be a flat list
+    if isinstance(success, list):
+        return success
+    return success.get("players", success.get("data", []))
+
+
+async def fetch_user_squad(user_id: int, db=None) -> dict:
+    """Fetch a specific user's fantasy squad picks."""
+    data = await _get(f"{settings.fifa_base_url}/team/{user_id}", db)
+    success = data.get("success", data)
+    return success
+
+
 async def fetch_scorers() -> dict:
     """Fetch WC 2026 top scorers from football-data.org."""
     api_key = settings.football_data_api_key

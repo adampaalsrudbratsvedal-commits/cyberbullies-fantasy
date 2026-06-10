@@ -14,6 +14,7 @@ export default function Navbar() {
     { to: '/stats', label: 'Stats' },
     { to: '/kamper', label: 'Kamper' },
     { to: '/vm-bracket', label: 'VM-Bracket' },
+    { to: '/lag', label: 'Fantasy Lag' },
     { to: '/historikk', label: 'Ligahistorie' },
     { to: '/regler', label: 'Regler' },
     ...(user?.is_admin ? [{ to: '/admin', label: 'Admin' }] : []),

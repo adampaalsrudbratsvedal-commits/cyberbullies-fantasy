@@ -4,7 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from .config import settings
 from .database import engine, Base, get_db
-from .routers import league, auth, admin
+from .routers import league, auth, admin, fantasy
 
 try:
     Base.metadata.create_all(bind=engine)
@@ -24,6 +24,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(league.router)
 app.include_router(admin.router)
+app.include_router(fantasy.router)
 
 
 @app.get("/")

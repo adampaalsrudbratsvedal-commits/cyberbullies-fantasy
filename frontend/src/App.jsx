@@ -8,6 +8,7 @@ import Admin from './pages/Admin'
 import Regler from './pages/Regler'
 import Kamper from './pages/Kamper'
 import VMBracket from './pages/VMBracket'
+import Squads from './pages/Squads'
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
               <Route path="/kamper" element={<Kamper />} />
               <Route path="/regler" element={<Regler />} />
               <Route path="/vm-bracket" element={<VMBracket />} />
+              <Route path="/lag" element={<Squads />} />
               <Route path="/admin" element={<Admin />} />
             </Routes>
           </main>

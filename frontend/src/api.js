@@ -30,5 +30,11 @@ export const getFixtures = () => api.get('/league/fixtures')
 export const getRoundsDebug = () => api.get('/league/rounds-debug')
 export const getGroups = () => api.get('/league/groups')
 export const getScorers = () => api.get('/league/scorers')
+export const getFantasyPlayers = () => api.get('/fantasy/players')
+export const getFantasySquads = () => api.get('/fantasy/squads')
+export const syncFantasyPlayers = () => api.post('/fantasy/sync-players')
+export const syncFantasySquads = () => api.post('/fantasy/sync-squads')
+export const debugFantasySquad = (userId) => api.get(`/fantasy/debug-squad/${userId}`)
+export const debugFantasyPlayers = () => api.get('/fantasy/debug-players')
 
 export default api
