@@ -20,10 +20,10 @@ export default function Regler() {
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'center',
           minHeight: '100vh',
-          padding: '48px 16px',
+          padding: '12px 16px',
         }}
       >
         <img
