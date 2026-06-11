@@ -125,28 +125,30 @@ async def get_scorers_endpoint(db: Session = Depends(get_db)):
 
 @router.get("/fixtures-debug-raw")
 async def get_fixtures_debug_raw():
-    """Return raw score objects from football-data.org to debug null scores."""
+    """Return raw response from FIFA public API to debug fixture structure."""
     import httpx
-    from ..config import settings
-    api_key = settings.football_data_api_key
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED",
-            headers={"X-Auth-Token": api_key},
-            timeout=15,
-        )
-        data = resp.json()
-    matches = data.get("matches", [])[:5]
-    return [
-        {
-            "id": m["id"],
-            "home": m.get("homeTeam", {}).get("name"),
-            "away": m.get("awayTeam", {}).get("name"),
-            "status": m.get("status"),
-            "score": m.get("score"),
-        }
-        for m in matches
+    candidates = [
+        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&idSeason=278513&count=5&language=en",
+        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&idSeason=278514&count=5&language=en",
+        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&count=5&language=en",
+        "https://api.fifa.com/api/v3/live/football/17/278513/matches",
     ]
+    results = {}
+    async with httpx.AsyncClient() as client:
+        for url in candidates:
+            try:
+                resp = await client.get(url, headers={"accept": "application/json", "user-agent": "Mozilla/5.0"}, timeout=10)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    total = data.get("TotalItems") or data.get("total") or "?"
+                    results_list = data.get("Results") or data.get("results") or data.get("matches") or []
+                    sample = results_list[:1] if results_list else data
+                    results[url] = {"status": 200, "TotalItems": total, "sample_keys": list(sample[0].keys()) if isinstance(sample, list) and sample else str(sample)[:300]}
+                else:
+                    results[url] = {"status": resp.status_code, "body": resp.text[:200]}
+            except Exception as e:
+                results[url] = {"error": str(e)[:150]}
+    return results
 
 
 @router.get("/rounds-debug")
