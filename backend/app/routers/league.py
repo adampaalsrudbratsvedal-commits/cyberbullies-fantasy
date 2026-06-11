@@ -125,35 +125,39 @@ async def get_scorers_endpoint(db: Session = Depends(get_db)):
 
 @router.get("/fixtures-debug-raw")
 async def get_fixtures_debug_raw(db: Session = Depends(get_db)):
-    """Probe FIFA public API with date filter + Fantasy JSON for WC 2026 fixtures."""
+    """Probe various sources for WC 2026 fixture data."""
     import httpx
     from ..services.fifa_api import _headers
+    headers_plain = {"accept": "application/json", "user-agent": "Mozilla/5.0"}
     candidates = [
-        # Date-filtered FIFA public API
-        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&count=5&language=en&dateFrom=2026-06-01",
-        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&count=5&language=en&from=2026-06-01",
-        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&count=5&language=en&startDate=2026-06-01",
-        # FIFA Fantasy JSON (same base as players.json / squads.json)
-        "https://play.fifa.com/json/fantasy/fixtures.json",
-        "https://play.fifa.com/json/fantasy/matches.json",
-        "https://play.fifa.com/json/fantasy/schedule.json",
-        "https://play.fifa.com/json/fantasy/rounds.json",
-        "https://play.fifa.com/json/fantasy/gameweeks.json",
+        # FIFA seasons list for competition 17
+        ("plain", "https://api.fifa.com/api/v3/competitions/17/seasons?language=en&count=5"),
+        # FIFA public API date filter
+        ("plain", "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&count=3&language=en&dateFrom=2026-06-01&dateTo=2026-06-15"),
+        # FIFA Fantasy JSON
+        ("auth",  "https://play.fifa.com/json/fantasy/fixtures.json"),
+        ("auth",  "https://play.fifa.com/json/fantasy/rounds.json"),
+        ("auth",  "https://play.fifa.com/json/fantasy/gameweeks.json"),
+        ("auth",  "https://play.fifa.com/json/fantasy/schedule.json"),
+        ("auth",  "https://play.fifa.com/json/fantasy/matches.json"),
+        # Gamebar round 1 (authenticated)
+        ("auth",  f"https://play.fifa.com/api/en/fantasy/gamebar?roundId=1"),
     ]
     results = {}
     async with httpx.AsyncClient() as client:
-        for url in candidates:
+        for auth_type, url in candidates:
+            h = _headers() if auth_type == "auth" else headers_plain
             try:
-                resp = await client.get(url, headers=_headers(), timeout=6)
+                resp = await client.get(url, headers=h, timeout=6)
                 if resp.status_code == 200:
                     data = resp.json()
                     if isinstance(data, list):
                         first = data[0] if data else {}
-                        results[url] = {"ok": True, "count": len(data), "sample_keys": list(first.keys()) if isinstance(first, dict) else str(first)[:200]}
+                        results[url] = {"ok": True, "count": len(data), "sample": str(data[:1])[:400]}
                     else:
-                        results[url] = {"ok": True, "keys": list(data.keys())[:10], "sample": str(data)[:300]}
+                        results[url] = {"ok": True, "keys": list(data.keys())[:15], "sample": str(data)[:400]}
                 else:
-                    results[url] = {"status": resp.status_code}
+                    results[url] = {"status": resp.status_code, "body": resp.text[:100]}
             except Exception as e:
                 results[url] = {"error": str(e)[:100]}
     return results
