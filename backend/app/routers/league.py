@@ -16,9 +16,18 @@ TOTAL_ROUNDS = 8
 
 
 @router.post("/sync")
-@router.get("/sync-cron")
 async def sync_endpoint(db: Session = Depends(get_db)):
     """Sync round scores + probability snapshots from live standings."""
+    import traceback
+    try:
+        return await sync_league(db)
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
+
+
+@router.get("/sync-cron")
+async def sync_cron_endpoint(db: Session = Depends(get_db)):
+    """Cron-triggered sync (GET for Vercel cron compatibility)."""
     import traceback
     try:
         return await sync_league(db)
