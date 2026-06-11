@@ -74,17 +74,45 @@ async def get_standings(db: Session = Depends(get_db)):
 
 
 @router.get("/history")
-def get_history(db: Session = Depends(get_db)):
+async def get_history(db: Session = Depends(get_db)):
     scores = db.query(RoundScore).order_by(RoundScore.round_id).all()
-    result = {}
-    for s in scores:
-        result.setdefault(s.round_id, []).append({
-            "username": s.fifa_username,
-            "round_points": s.round_points,
-            "overall_points": s.overall_points,
-            "overall_rank": s.overall_rank,
-        })
-    return result
+    if scores:
+        result = {}
+        for s in scores:
+            result.setdefault(s.round_id, []).append({
+                "username": s.fifa_username,
+                "round_points": s.round_points,
+                "overall_points": s.overall_points,
+                "overall_rank": s.overall_rank,
+            })
+        return result
+    # DB empty — fetch live standings and save them on the fly
+    try:
+        ranks = await fetch_standings(db)
+        result = {}
+        for rank in ranks:
+            round_id = rank.get("roundId")
+            if not round_id:
+                continue
+            result.setdefault(round_id, []).append({
+                "username": rank["userName"],
+                "round_points": rank.get("roundPoints"),
+                "overall_points": rank.get("overallPoints"),
+                "overall_rank": rank.get("overallRank"),
+            })
+            db.add(RoundScore(
+                fifa_user_id    = rank["userId"],
+                fifa_username   = rank["userName"],
+                round_id        = round_id,
+                round_points    = rank.get("roundPoints"),
+                overall_points  = rank.get("overallPoints"),
+                overall_rank    = rank.get("overallRank"),
+                round_rank      = rank.get("roundRank"),
+            ))
+        db.commit()
+        return result
+    except Exception:
+        return {}
 
 
 @router.get("/stats")
