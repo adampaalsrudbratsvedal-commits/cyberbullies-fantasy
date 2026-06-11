@@ -125,23 +125,36 @@ async def get_scorers_endpoint(db: Session = Depends(get_db)):
 
 @router.get("/fixtures-debug-raw")
 async def get_fixtures_debug_raw(db: Session = Depends(get_db)):
-    """Return raw gamebar data to debug fixture/score structure."""
-    try:
-        rounds = await fetch_rounds(db)
-        if not rounds:
-            return {"error": "No rounds returned", "rounds": rounds}
-        sample_round = rounds[0] if isinstance(rounds, list) else list(rounds.values())[0]
-        round_id = sample_round.get("id") or sample_round.get("roundId") or 1
-        gamebar = await fetch_gamebar(round_id, db)
-        return {
-            "rounds_count": len(rounds) if isinstance(rounds, list) else "?",
-            "rounds_sample": rounds[:2] if isinstance(rounds, list) else rounds,
-            "gamebar_keys": list(gamebar.keys()) if isinstance(gamebar, dict) else str(gamebar)[:300],
-            "gamebar_sample": str(gamebar)[:800],
-        }
-    except Exception as e:
-        import traceback
-        return {"error": str(e), "traceback": traceback.format_exc()}
+    """Probe FIFA Fantasy JSON endpoints to find fixtures/rounds data."""
+    import httpx
+    from ..services.fifa_api import _headers
+    candidates = [
+        "https://play.fifa.com/json/fantasy/rounds.json",
+        "https://play.fifa.com/json/fantasy/fixtures.json",
+        "https://play.fifa.com/json/fantasy/matches.json",
+        "https://play.fifa.com/json/fantasy/schedule.json",
+        "https://play.fifa.com/json/fantasy/gameweeks.json",
+        "https://play.fifa.com/json/fantasy/calendar.json",
+        "https://play.fifa.com/api/en/fantasy/rounds",
+        "https://play.fifa.com/api/en/fantasy/fixtures",
+        "https://play.fifa.com/api/en/fantasy/matches",
+    ]
+    results = {}
+    async with httpx.AsyncClient() as client:
+        for url in candidates:
+            try:
+                resp = await client.get(url, headers=_headers(), timeout=6)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, list):
+                        results[url] = {"ok": True, "count": len(data), "sample": str(data[:1])[:400]}
+                    else:
+                        results[url] = {"ok": True, "keys": list(data.keys())[:10], "sample": str(data)[:400]}
+                else:
+                    results[url] = {"status": resp.status_code}
+            except Exception as e:
+                results[url] = {"error": str(e)[:100]}
+    return results
 
 
 @router.get("/rounds-debug")
