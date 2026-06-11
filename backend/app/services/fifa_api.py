@@ -12,13 +12,16 @@ def _headers() -> dict:
 
 
 async def _get(url: str, db=None) -> dict:
-    await token_manager.ensure_fresh(db)
+    # Load cached token without blocking on refresh — fail fast
+    if not token_manager._fp_user:
+        if db:
+            found = token_manager._load_db(db)
+            if not found:
+                token_manager._load_env()
+        else:
+            token_manager._load_env()
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, headers=_headers(), timeout=5)
-        if resp.status_code == 401:
-            refreshed = await token_manager.refresh(db)
-            if refreshed:
-                resp = await client.get(url, headers=_headers(), timeout=5)
         resp.raise_for_status()
         return resp.json()
 
