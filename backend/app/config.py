@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     league_name: str = "Cyberbullies"
     monte_carlo_mean: float = 68.0
     monte_carlo_std: float = 19.0
-    monte_carlo_simulations: int = 250000
+    monte_carlo_simulations: int = 500000
 
     class Config:
         env_file = ".env"

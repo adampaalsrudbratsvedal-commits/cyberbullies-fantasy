@@ -609,7 +609,7 @@ export default function Stats() {
     : []
 
   const rounds = probHistory ? Object.keys(probHistory).length : 0
-  const scenarioCount = '250K SIMULERINGER'
+  const scenarioCount = '500K SIMULERINGER'
 
   return (
     <>
