@@ -365,7 +365,6 @@ export default function Squads() {
             paddingBottom: 60,
           }}
         >
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🏆</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#888', marginBottom: 6 }}>
             Ingen lag lagret ennå
           </div>
