@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getHistory } from '../api'
+import { getHistory, getStandings } from '../api'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
@@ -44,7 +44,29 @@ export default function History() {
 
   useEffect(() => {
     getHistory()
-      .then((r) => setHistory(r.data))
+      .then(async (r) => {
+        const data = r.data
+        // If DB has no round scores yet, build from live standings
+        if (!data || Object.keys(data).length === 0) {
+          const s = await getStandings()
+          const ranks = Array.isArray(s.data) ? s.data : []
+          const built = {}
+          for (const rank of ranks) {
+            const rid = rank.roundId ?? rank.round_id
+            if (!rid) continue
+            built[rid] = built[rid] || []
+            built[rid].push({
+              username: rank.userName,
+              round_points: rank.roundPoints,
+              overall_points: rank.overallPoints,
+              overall_rank: rank.overallRank,
+            })
+          }
+          setHistory(built)
+        } else {
+          setHistory(data)
+        }
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [])
