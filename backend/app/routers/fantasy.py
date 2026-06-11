@@ -255,6 +255,12 @@ def debug_team_names(db: Session = Depends(get_db)):
 
 
 
+@router.get("/sync-squads-cron")
+async def sync_squads_cron(db: Session = Depends(get_db)):
+    """Cron-triggered squad sync (GET for Vercel cron compatibility)."""
+    return await sync_squads(db)
+
+
 @router.post("/sync-squads")
 async def sync_squads(db: Session = Depends(get_db)):
     """
