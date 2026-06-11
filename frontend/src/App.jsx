@@ -9,6 +9,7 @@ import Regler from './pages/Regler'
 import Kamper from './pages/Kamper'
 import VMBracket from './pages/VMBracket'
 import Squads from './pages/Squads'
+import KampDetalj from './pages/KampDetalj'
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
               <Route path="/vm-bracket" element={<VMBracket />} />
               <Route path="/lag" element={<Squads />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/kamper/:matchId" element={<KampDetalj />} />
             </Routes>
           </main>
         </div>

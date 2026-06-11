@@ -2,6 +2,7 @@
 // Auto-refresher hvert 60. sekund
 
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getFixtures, getAllMatchPicks } from '../api'
 import Pitch from '../components/Pitch'
 import { TH } from '../lib/theme'
@@ -68,7 +69,7 @@ function MatchPicks({ homeTeam, awayTeam, byTeam }) {
     <div style={{ borderTop: `1px solid ${TH.border}`, marginTop: 8 }}>
       {/* Toggler row */}
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
         style={{
           width: '100%',
           display: 'flex',
@@ -213,6 +214,7 @@ function groupByRound(fixtures) {
 // ── Kampkort ──────────────────────────────────────────────────
 
 function MatchCard({ match, byTeam }) {
+  const navigate = useNavigate()
   const live = isLive(match.status)
   const finished = isFinished(match.status)
 
@@ -231,7 +233,9 @@ function MatchCard({ match, byTeam }) {
           ? `linear-gradient(135deg, ${TH.accent}0a 0%, ${TH.elev} 60%)`
           : TH.elev,
         border: `1px solid ${live ? TH.accent + '44' : TH.border}`,
+        cursor: 'pointer',
       }}
+      onClick={() => navigate(`/kamper/${match.id}`, { state: { match, byTeam } })}
     >
       {live && <div style={{ height: 2, background: TH.accent }} />}
 
