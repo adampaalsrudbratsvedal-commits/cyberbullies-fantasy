@@ -124,31 +124,24 @@ async def get_scorers_endpoint(db: Session = Depends(get_db)):
 
 
 @router.get("/fixtures-debug-raw")
-async def get_fixtures_debug_raw():
-    """Return raw response from FIFA public API to debug fixture structure."""
-    import httpx
-    candidates = [
-        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&idSeason=278513&count=5&language=en",
-        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&idSeason=278514&count=5&language=en",
-        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&count=5&language=en",
-        "https://api.fifa.com/api/v3/live/football/17/278513/matches",
-    ]
-    results = {}
-    async with httpx.AsyncClient() as client:
-        for url in candidates:
-            try:
-                resp = await client.get(url, headers={"accept": "application/json", "user-agent": "Mozilla/5.0"}, timeout=10)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    total = data.get("TotalItems") or data.get("total") or "?"
-                    results_list = data.get("Results") or data.get("results") or data.get("matches") or []
-                    sample = results_list[:1] if results_list else data
-                    results[url] = {"status": 200, "TotalItems": total, "sample_keys": list(sample[0].keys()) if isinstance(sample, list) and sample else str(sample)[:300]}
-                else:
-                    results[url] = {"status": resp.status_code, "body": resp.text[:200]}
-            except Exception as e:
-                results[url] = {"error": str(e)[:150]}
-    return results
+async def get_fixtures_debug_raw(db: Session = Depends(get_db)):
+    """Return raw gamebar data to debug fixture/score structure."""
+    try:
+        rounds = await fetch_rounds(db)
+        if not rounds:
+            return {"error": "No rounds returned", "rounds": rounds}
+        sample_round = rounds[0] if isinstance(rounds, list) else list(rounds.values())[0]
+        round_id = sample_round.get("id") or sample_round.get("roundId") or 1
+        gamebar = await fetch_gamebar(round_id, db)
+        return {
+            "rounds_count": len(rounds) if isinstance(rounds, list) else "?",
+            "rounds_sample": rounds[:2] if isinstance(rounds, list) else rounds,
+            "gamebar_keys": list(gamebar.keys()) if isinstance(gamebar, dict) else str(gamebar)[:300],
+            "gamebar_sample": str(gamebar)[:800],
+        }
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc()}
 
 
 @router.get("/rounds-debug")
