@@ -713,6 +713,7 @@ export default function Stats() {
               { name: 'RithiP', cm: '19,1 cm' },
               { name: 'Odin67', cm: '18,2 cm' },
               { name: 'oskarop', cm: '16,7 cm' },
+              { name: 'xFELIXx', cm: '16,0 cm' },
               { name: 'KalkunBlaster', cm: '15,0 cm' },
               { name: 'T-bag637273', cm: '14,2 cm' },
               { name: 'Jaeger FC', cm: '13,8 cm' },
