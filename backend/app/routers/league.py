@@ -123,6 +123,32 @@ async def get_scorers_endpoint(db: Session = Depends(get_db)):
         return {"scorers": [], "error": str(e)}
 
 
+@router.get("/fixtures-debug-raw")
+async def get_fixtures_debug_raw():
+    """Return raw score objects from football-data.org to debug null scores."""
+    import httpx
+    from ..config import settings
+    api_key = settings.football_data_api_key
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED",
+            headers={"X-Auth-Token": api_key},
+            timeout=15,
+        )
+        data = resp.json()
+    matches = data.get("matches", [])[:5]
+    return [
+        {
+            "id": m["id"],
+            "home": m.get("homeTeam", {}).get("name"),
+            "away": m.get("awayTeam", {}).get("name"),
+            "status": m.get("status"),
+            "score": m.get("score"),
+        }
+        for m in matches
+    ]
+
+
 @router.get("/rounds-debug")
 async def get_rounds_debug(db: Session = Depends(get_db)):
     """Debug: return raw rounds.json to inspect API shape."""

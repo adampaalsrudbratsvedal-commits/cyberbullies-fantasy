@@ -316,6 +316,39 @@ async def probe_fifa_data(db: Session = Depends(get_db)):
         return {"error": str(e), "traceback": traceback.format_exc()}
 
 
+@router.get("/probe-fifa-fixtures")
+async def probe_fifa_fixtures(db: Session = Depends(get_db)):
+    """Probe FIFA for fixture/results data."""
+    import httpx
+    from ..services.fifa_api import _headers, FIFA_JSON_BASE, settings
+    candidates = [
+        f"{FIFA_JSON_BASE}/fixtures.json",
+        f"{FIFA_JSON_BASE}/matches.json",
+        f"{FIFA_JSON_BASE}/results.json",
+        f"{FIFA_JSON_BASE}/schedule.json",
+        f"https://play.fifa.com/api/en/fantasy/fixtures",
+        f"https://play.fifa.com/api/en/fantasy/matches",
+        f"https://play.fifa.com/api/en/fantasy/rounds/1/matches",
+        f"https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&idSeason=278513&count=10",
+    ]
+    results = {}
+    async with httpx.AsyncClient() as client:
+        for url in candidates:
+            try:
+                resp = await client.get(url, headers=_headers(), timeout=6)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, list):
+                        results[url] = {"status": "ok", "count": len(data), "sample": str(data[:1])[:300]}
+                    else:
+                        results[url] = {"status": "ok", "keys": list(data.keys())[:10], "sample": str(data)[:300]}
+                else:
+                    results[url] = {"status": resp.status_code}
+            except Exception as e:
+                results[url] = {"status": "error", "error": str(e)[:100]}
+    return results
+
+
 @router.post("/sync-players-fifa")
 async def sync_players_fifa(
     db: Session = Depends(get_db),
