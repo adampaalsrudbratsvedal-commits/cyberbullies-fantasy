@@ -116,6 +116,43 @@ async def fetch_groups() -> dict:
         return resp.json()
 
 
+async def fetch_fifa_squads(db=None) -> list[dict]:
+    """Fetch all WC 2026 national teams from FIFA Fantasy API."""
+    data = await _get(f"{settings.fifa_base_url}/squads", db)
+    # Handle both list and wrapped response
+    if isinstance(data, list):
+        return data
+    return data.get("squads") or data.get("data") or data.get("success") or []
+
+
+async def fetch_fifa_players(db=None) -> list[dict]:
+    """Fetch all WC 2026 players from FIFA Fantasy API."""
+    data = await _get(f"{settings.fifa_base_url}/players", db)
+    if isinstance(data, list):
+        return data
+    return data.get("players") or data.get("data") or data.get("success") or []
+
+
+async def probe_fifa_data_endpoints(db=None) -> dict:
+    """Probe likely FIFA Fantasy endpoints for teams and players."""
+    candidates = [
+        "/squads", "/players", "/tournament/squads", "/tournament/players",
+        "/squads?limit=200", "/players?limit=2000",
+    ]
+    results = {}
+    for path in candidates:
+        url = f"{settings.fifa_base_url}{path}"
+        try:
+            data = await _get(url, db)
+            if isinstance(data, list):
+                results[path] = {"status": "ok", "type": "list", "count": len(data), "sample": data[:2]}
+            else:
+                results[path] = {"status": "ok", "type": "dict", "keys": list(data.keys()), "sample": str(data)[:300]}
+        except Exception as e:
+            results[path] = {"status": "error", "error": str(e)}
+    return results
+
+
 async def fetch_wc_teams_with_players() -> list:
     """
     Fetch all WC 2026 national teams + their squad members from football-data.org.

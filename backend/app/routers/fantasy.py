@@ -13,6 +13,9 @@ from ..models.round_score import RoundScore
 from ..services.fifa_api import (
     fetch_standings,
     fetch_wc_teams_with_players,
+    fetch_fifa_squads,
+    fetch_fifa_players,
+    probe_fifa_data_endpoints,
     fetch_user_squad,
     probe_squad_endpoints,
     normalise_team,
@@ -362,6 +365,100 @@ async def sync_squads(
 
 
 # ─────────────────────────── DEBUG ─────────────────────────────────────────
+
+@router.get("/probe-fifa-data")
+async def probe_fifa_data(db: Session = Depends(get_db)):
+    """Find the correct FIFA Fantasy endpoints for squads and players."""
+    try:
+        results = await probe_fifa_data_endpoints(db)
+        return results
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
+
+
+@router.post("/sync-players-fifa")
+async def sync_players_fifa(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """
+    Fetch squads (teams) and players directly from FIFA Fantasy API,
+    then bulk-upsert into DB. No translation layer needed.
+    Position: GK/DEF/MID/FWD string → id 1/2/3/4
+    Player name: knownName || firstName + ' ' + lastName
+    """
+    POS_MAP = {"GK": 1, "DEF": 2, "MID": 3, "FWD": 4}
+    POS_NAME = {"GK": "Keeper", "DEF": "Forsvar", "MID": "Midtbane", "FWD": "Angrep"}
+
+    try:
+        squads_raw = await fetch_fifa_squads(db)
+        players_raw = await fetch_fifa_players(db)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"FIFA API feil: {e}\n{traceback.format_exc()}")
+
+    if not players_raw:
+        return {"synced": 0, "message": "FIFA API returnerte 0 spillere", "squads_count": len(squads_raw)}
+
+    # Build team lookup: id → name
+    team_map = {t["id"]: t["name"] for t in squads_raw if "id" in t and "name" in t}
+
+    rows = []
+    for p in players_raw:
+        pid = p.get("id")
+        if not pid:
+            continue
+
+        known = p.get("knownName")
+        first = p.get("firstName", "")
+        last = p.get("lastName", "")
+        name = known or f"{first} {last}".strip()
+
+        pos_str = p.get("position", "MID")
+        pos_id = POS_MAP.get(pos_str, 3)
+        pos_name = POS_NAME.get(pos_str, pos_str)
+
+        squad_id = p.get("squadId")
+        team_name = team_map.get(squad_id, "")
+
+        rows.append({
+            "id":                pid,
+            "name":              name,
+            "short_name":        name,
+            "national_team_id":  squad_id,
+            "national_team_name": team_name,
+            "position_id":       pos_id,
+            "position_name":     pos_name,
+            "price":             p.get("price", 0.0),
+            "total_points":      p.get("stats", {}).get("totalPoints", 0),
+        })
+
+    if not rows:
+        return {"synced": 0, "message": "Ingen gyldige spillere"}
+
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    stmt = pg_insert(FantasyPlayer).values(rows)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["id"],
+        set_={
+            "name":               stmt.excluded.name,
+            "short_name":         stmt.excluded.short_name,
+            "national_team_id":   stmt.excluded.national_team_id,
+            "national_team_name": stmt.excluded.national_team_name,
+            "position_id":        stmt.excluded.position_id,
+            "position_name":      stmt.excluded.position_name,
+            "price":              stmt.excluded.price,
+            "total_points":       stmt.excluded.total_points,
+        },
+    )
+    db.execute(stmt)
+    db.commit()
+
+    return {
+        "synced": len(rows),
+        "squads": len(squads_raw),
+        "source": "FIFA Fantasy API",
+    }
+
 
 @router.get("/debug-players")
 async def debug_players(db: Session = Depends(get_db)):
