@@ -49,51 +49,80 @@ STAGE_MAP = {
 }
 
 
-async def fetch_fixtures(db=None) -> list[dict]:
-    """Fetch all WC 2026 fixtures from football-data.org."""
-    api_key = settings.football_data_api_key
-    if not api_key:
-        raise Exception("FOOTBALL_DATA_API_KEY ikke satt i miljøvariabler")
+_FIFA_STATUS_MAP = {
+    "1": "SCHEDULED",   # Upcoming
+    "2": "LIVE",        # Live
+    "3": "FINISHED",    # Full time
+    "4": "FINISHED",    # After extra time
+    "5": "FINISHED",    # After penalties
+    "0": "POSTPONED",
+}
 
+_FIFA_STAGE_MAP = {
+    "1": ("GROUP", "Gruppespill"),
+    "2": ("R32",   "Runde av 32"),
+    "3": ("R16",   "Åttendedelsfinale"),
+    "4": ("QF",    "Kvartfinale"),
+    "5": ("SF",    "Semifinale"),
+    "6": ("F",     "Finale"),
+}
+
+
+async def fetch_fixtures(db=None) -> list[dict]:
+    """Fetch all WC 2026 fixtures + scores from FIFA public API."""
+    # WC 2026: idCompetition=17, idSeason=278513
+    url = (
+        "https://api.fifa.com/api/v3/calendar/matches"
+        "?idCompetition=17&idSeason=278513&count=200&language=en"
+    )
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            "https://api.football-data.org/v4/competitions/WC/matches",
-            headers={"X-Auth-Token": api_key},
+            url,
+            headers={"accept": "application/json", "user-agent": "Mozilla/5.0"},
             timeout=15,
         )
         resp.raise_for_status()
         data = resp.json()
 
-    raw_matches = data.get("matches", [])
+    raw_matches = data.get("Results", [])
     fixtures = []
 
     for m in raw_matches:
-        fd_stage = m.get("stage", "GROUP_STAGE")
-        stage, stage_label = STAGE_MAP.get(fd_stage, ("GROUP", fd_stage))
-        matchday = m.get("matchday") or 1
+        match_status = str(m.get("MatchStatus", "1"))
+        status = _FIFA_STATUS_MAP.get(match_status, "SCHEDULED")
 
-        # Knockout rounds get their own "round" after group stage (rounds 1-3)
+        stage_id = str(m.get("IdStage", "1"))
+        stage, stage_label = _FIFA_STAGE_MAP.get(stage_id, ("GROUP", "Gruppespill"))
+
+        group_name = (m.get("GroupName") or [{}])[0].get("Description", "")
+        matchday_raw = m.get("MatchDay") or 1
+
         knockout_round_map = {"R32": 4, "R16": 5, "QF": 6, "SF": 7, "F": 8}
-        round_id = knockout_round_map.get(stage, matchday)
+        round_id = knockout_round_map.get(stage, matchday_raw)
 
-        score = m.get("score", {})
-        full = score.get("fullTime", {})
-        home_score = full.get("home")
-        away_score = full.get("away")
+        home_team = (m.get("Home") or {})
+        away_team = (m.get("Away") or {})
+        home_name = (home_team.get("TeamName") or [{}])[0].get("Description") or home_team.get("IdTeam", "")
+        away_name = (away_team.get("TeamName") or [{}])[0].get("Description") or away_team.get("IdTeam", "")
 
-        status = m.get("status", "SCHEDULED")
+        home_score = home_team.get("Score")
+        away_score = away_team.get("Score")
+
+        venue_list = m.get("Venue") or {}
+        venue_name_list = venue_list.get("Name") or [{}]
+        venue = venue_name_list[0].get("Description") if venue_name_list else None
 
         fixtures.append({
-            "id": m.get("id"),
+            "id": m.get("IdMatch"),
             "roundId": round_id,
             "stage": stage,
             "stageLabel": stage_label,
-            "homeSquadName": m.get("homeTeam", {}).get("name") or m.get("homeTeam", {}).get("shortName"),
-            "awaySquadName": m.get("awayTeam", {}).get("name") or m.get("awayTeam", {}).get("shortName"),
+            "homeSquadName": home_name,
+            "awaySquadName": away_name,
             "homeScore": home_score,
             "awayScore": away_score,
-            "date": m.get("utcDate"),
-            "venueName": m.get("venue"),
+            "date": m.get("Date"),
+            "venueName": venue,
             "status": status,
         })
 
