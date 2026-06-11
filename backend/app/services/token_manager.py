@@ -77,7 +77,7 @@ class TokenManager:
                         "client_id": CLIENT_ID,
                     },
                     headers={"Content-Type": "application/x-www-form-urlencoded"},
-                    timeout=15,
+                    timeout=6,
                 )
                 resp.raise_for_status()
                 data = resp.json()
