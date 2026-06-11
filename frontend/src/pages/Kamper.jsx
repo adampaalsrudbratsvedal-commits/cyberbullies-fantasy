@@ -245,7 +245,7 @@ function MatchCard({ match, byTeam }) {
   const homeScore = match.homeScore
   const awayScore = match.awayScore
   const hasScore = homeScore !== null && awayScore !== null && homeScore !== undefined && awayScore !== undefined
-  const hasPenalty = match.homePenaltyScore !== null && match.homePenaltyScore !== undefined
+  const hasPenalty = match.homePenaltyScore > 0 || match.awayPenaltyScore > 0
 
   return (
     <div
