@@ -720,6 +720,7 @@ export default function Stats() {
               { name: 'LeonC', cm: '12,3 cm' },
               { name: 'hansssb', cm: '11,4 cm' },
               { name: 'sa1ut', cm: '9,6 cm' },
+              { name: 'Børge Haugset', cm: '6,2 cm' },
             ].map((p, i) => (
               <div
                 key={p.name}
