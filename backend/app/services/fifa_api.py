@@ -159,50 +159,6 @@ async def probe_fifa_data_endpoints(db=None) -> dict:
     return results
 
 
-async def fetch_wc_teams_with_players() -> list:
-    """
-    Fetch all WC 2026 national teams + their squad members from football-data.org.
-    Returns a flat list of player dicts with nationalTeamName injected.
-    """
-    api_key = settings.football_data_api_key
-    if not api_key:
-        raise Exception("FOOTBALL_DATA_API_KEY ikke satt i miljøvariabler")
-
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            "https://api.football-data.org/v4/competitions/WC/teams",
-            headers={"X-Auth-Token": api_key},
-            timeout=20,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-
-    POSITION_MAP = {
-        "Goalkeeper": (1, "Keeper"),
-        "Defence":    (2, "Forsvar"),
-        "Midfield":   (3, "Midtbane"),
-        "Offence":    (4, "Angrep"),
-    }
-
-    players = []
-    for team in data.get("teams", []):
-        team_id   = team.get("id")
-        team_name = team.get("name") or team.get("shortName", "")
-        for p in team.get("squad", []):
-            pos_raw  = p.get("position", "Midfield")
-            pos_id, pos_name = POSITION_MAP.get(pos_raw, (3, pos_raw))
-            players.append({
-                "id":               p.get("id"),
-                "name":             p.get("name", ""),
-                "shortName":        p.get("shortName") or p.get("name", ""),
-                "nationalTeamId":   team_id,
-                "nationalTeamName": team_name,
-                "positionId":       pos_id,
-                "positionName":     pos_name,
-                "price":            0.0,
-                "totalPoints":      0,
-            })
-    return players
 
 
 # ── National team name normalisation ─────────────────────────────────────────

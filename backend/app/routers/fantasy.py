@@ -12,7 +12,6 @@ from ..models.fantasy_squad_pick import FantasySquadPick
 from ..models.round_score import RoundScore
 from ..services.fifa_api import (
     fetch_standings,
-    fetch_wc_teams_with_players,
     fetch_fifa_squads,
     fetch_fifa_players,
     probe_fifa_data_endpoints,
@@ -196,65 +195,6 @@ def get_all_match_picks(db: Session = Depends(get_db)):
 
 # ─────────────────────────── SYNC ENDPOINTS ────────────────────────────────
 
-@router.post("/sync-players")
-async def sync_players(
-    db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
-):
-    """
-    Fetch all WC 2026 squad members from football-data.org and bulk-upsert into DB.
-    Uses a single INSERT … ON CONFLICT DO UPDATE to stay well within Vercel's 10s limit.
-    """
-    try:
-        raw = await fetch_wc_teams_with_players()
-    except Exception as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"football-data.org feil: {e}\n{traceback.format_exc()}",
-        )
-
-    if not raw:
-        return {"synced": 0, "message": "API returnerte 0 spillere"}
-
-    # Build rows list — skip entries without an id
-    rows = []
-    for p in raw:
-        pid = p.get("id")
-        if not pid:
-            continue
-        rows.append({
-            "id":                pid,
-            "name":              p.get("name", ""),
-            "short_name":        p.get("shortName") or p.get("name", ""),
-            "national_team_id":  p.get("nationalTeamId"),
-            "national_team_name": normalise_team(p.get("nationalTeamName", "")),
-            "position_id":       p.get("positionId", 3),
-            "position_name":     p.get("positionName", ""),
-            "price":             0.0,
-            "total_points":      0,
-        })
-
-    if not rows:
-        return {"synced": 0, "message": "Ingen gyldige spillere i API-respons"}
-
-    # Single bulk upsert — one DB round-trip instead of N×2
-    from sqlalchemy.dialects.postgresql import insert as pg_insert
-    stmt = pg_insert(FantasyPlayer).values(rows)
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["id"],
-        set_={
-            "name":               stmt.excluded.name,
-            "short_name":         stmt.excluded.short_name,
-            "national_team_id":   stmt.excluded.national_team_id,
-            "national_team_name": stmt.excluded.national_team_name,
-            "position_id":        stmt.excluded.position_id,
-            "position_name":      stmt.excluded.position_name,
-        },
-    )
-    db.execute(stmt)
-    db.commit()
-
-    return {"synced": len(rows), "total": len(raw)}
 
 
 @router.post("/sync-squads")
@@ -463,9 +403,9 @@ async def sync_players_fifa(
 @router.get("/debug-players")
 async def debug_players(db: Session = Depends(get_db)):
     try:
-        raw = await fetch_wc_teams_with_players()
-        return {"source": "football-data.org /v4/competitions/WC/teams",
-                "total_players": len(raw), "sample": raw[:5]}
+        players = await fetch_fifa_players(db)
+        squads = await fetch_fifa_squads(db)
+        return {"source": "FIFA Fantasy API", "total_players": len(players), "total_squads": len(squads), "sample": players[:5]}
     except Exception as e:
         return {"error": str(e), "traceback": traceback.format_exc()}
 
