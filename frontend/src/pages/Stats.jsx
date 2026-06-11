@@ -712,6 +712,7 @@ export default function Stats() {
               { name: 'Aibo FC', cm: '20,4 cm' },
               { name: 'RithiP', cm: '19,1 cm' },
               { name: 'Odin67', cm: '18,2 cm' },
+              { name: 'torres0512', cm: '17,3 cm' },
               { name: 'oskarop', cm: '16,7 cm' },
               { name: 'xFELIXx', cm: '16,0 cm' },
               { name: 'KalkunBlaster', cm: '15,0 cm' },
