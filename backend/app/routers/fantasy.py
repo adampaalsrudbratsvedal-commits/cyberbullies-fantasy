@@ -193,6 +193,16 @@ def get_all_match_picks(db: Session = Depends(get_db)):
     return {"byTeam": by_team}
 
 
+@router.get("/debug-team-names")
+def debug_team_names(db: Session = Depends(get_db)):
+    """Show all unique national_team_name values stored in squad picks."""
+    from sqlalchemy import distinct
+    names = db.query(distinct(FantasySquadPick.national_team_name)).filter(
+        FantasySquadPick.national_team_name.isnot(None)
+    ).all()
+    return sorted([n[0] for n in names])
+
+
 # ─────────────────────────── SYNC ENDPOINTS ────────────────────────────────
 
 
