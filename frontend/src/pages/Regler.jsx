@@ -11,7 +11,7 @@ export default function Regler() {
           width: '100%',
           height: '100%',
           objectFit: 'cover',
-          objectPosition: '50% -20%',
+          objectPosition: '50% 80%',
           zIndex: -1,
         }}
       />
