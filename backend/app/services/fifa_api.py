@@ -71,62 +71,59 @@ _FIFA_STAGE_MAP = {
 }
 
 
+_ROUND_STATUS_MAP = {
+    "complete":  "FINISHED",
+    "playing":   "LIVE",
+    "scheduled": "SCHEDULED",
+    "suspended": "POSTPONED",
+}
+
+_ROUND_STAGE_MAP = {
+    1: ("GROUP", "Gruppespill"),
+    2: ("R32",   "Runde av 32"),
+    3: ("R16",   "Åttendedelsfinale"),
+    4: ("QF",    "Kvartfinale"),
+    5: ("SF",    "Semifinale"),
+    6: ("F",     "Finale"),
+}
+
+
 async def fetch_fixtures(db=None) -> list[dict]:
-    """Fetch all WC 2026 fixtures + scores from FIFA public API."""
-    url = (
-        "https://api.fifa.com/api/v3/calendar/matches"
-        "?idCompetition=17&count=200&language=en"
-    )
+    """Fetch all WC 2026 fixtures + scores from FIFA Fantasy rounds.json."""
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            url,
-            headers={"accept": "application/json", "user-agent": "Mozilla/5.0"},
-            timeout=15,
+            "https://play.fifa.com/json/fantasy/rounds.json",
+            headers=_headers(),
+            timeout=10,
         )
         resp.raise_for_status()
-        data = resp.json()
+        rounds = resp.json()
 
-    raw_matches = data.get("Results", [])
     fixtures = []
+    for rnd in rounds:
+        round_id = rnd.get("id", 1)
+        stage_num = rnd.get("stage", 1)
+        stage, stage_label = _ROUND_STAGE_MAP.get(stage_num, ("GROUP", "Gruppespill"))
 
-    for m in raw_matches:
-        match_status = str(m.get("MatchStatus", "1"))
-        status = _FIFA_STATUS_MAP.get(match_status, "SCHEDULED")
+        for t in rnd.get("tournaments", []):
+            raw_status = t.get("status", "scheduled")
+            if t.get("isSuspended"):
+                raw_status = "suspended"
+            status = _ROUND_STATUS_MAP.get(raw_status, "SCHEDULED")
 
-        stage_id = str(m.get("IdStage", "1"))
-        stage, stage_label = _FIFA_STAGE_MAP.get(stage_id, ("GROUP", "Gruppespill"))
-
-        matchday_raw = m.get("MatchDay") or 1
-        knockout_round_map = {"R32": 4, "R16": 5, "QF": 6, "SF": 7, "F": 8}
-        round_id = knockout_round_map.get(stage, matchday_raw)
-
-        home_team = m.get("Home") or {}
-        away_team = m.get("Away") or {}
-        home_name_list = home_team.get("TeamName") or [{}]
-        away_name_list = away_team.get("TeamName") or [{}]
-        home_name = home_name_list[0].get("Description") if home_name_list else home_team.get("IdTeam", "")
-        away_name = away_name_list[0].get("Description") if away_name_list else away_team.get("IdTeam", "")
-
-        home_score = m.get("HomeTeamScore")
-        away_score = m.get("AwayTeamScore")
-
-        stadium = m.get("Stadium") or {}
-        stadium_name_list = stadium.get("Name") or [{}]
-        venue = stadium_name_list[0].get("Description") if stadium_name_list else None
-
-        fixtures.append({
-            "id": m.get("IdMatch"),
-            "roundId": round_id,
-            "stage": stage,
-            "stageLabel": stage_label,
-            "homeSquadName": home_name,
-            "awaySquadName": away_name,
-            "homeScore": home_score,
-            "awayScore": away_score,
-            "date": m.get("Date"),
-            "venueName": venue,
-            "status": status,
-        })
+            fixtures.append({
+                "id": t.get("id"),
+                "roundId": round_id,
+                "stage": stage,
+                "stageLabel": stage_label,
+                "homeSquadName": t.get("homeSquadName"),
+                "awaySquadName": t.get("awaySquadName"),
+                "homeScore": t.get("homeScore"),
+                "awayScore": t.get("awayScore"),
+                "date": t.get("date"),
+                "venueName": t.get("venueName"),
+                "status": status,
+            })
 
     fixtures.sort(key=lambda x: x.get("date") or "")
     return fixtures
