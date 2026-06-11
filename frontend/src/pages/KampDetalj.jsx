@@ -14,7 +14,7 @@ const FLAGS_ABBR = {
   ARG:'ar', ALG:'dz', AUT:'at', POR:'pt', COD:'cd', ENG:'gb-eng', CRO:'hr',
   GHA:'gh', PAN:'pa', UZB:'uz', COL:'co', BOL:'bo', NGA:'ng', TAN:'tz',
   JAM:'jm', ISL:'is', PER:'pe', CMR:'cm', CRC:'cr', POL:'pl', CHI:'cl',
-  VEN:'ve', HON:'hn', SLV:'sv', GUA:'gt',
+  VEN:'ve', HON:'hn', SLV:'sv', GUA:'gt', SWE:'se', JOR:'jo',
 }
 
 const FLAGS = {
@@ -74,13 +74,15 @@ function formatDate(dateStr) {
 
 function FlagLarge({ name, abbr }) {
   const code = flagCode(name, abbr)
-  if (!code) return <div style={{ width: 48, height: 32, borderRadius: 4, background: TH.card }} />
+  if (!code) return <div style={{ width: 64, height: 43, borderRadius: 4, background: TH.card }} />
   return (
-    <img
-      src={`https://flagcdn.com/w80/${code}.png`}
-      alt={name}
-      style={{ width: 48, height: 32, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
-    />
+    <span style={{ width: 64, height: 43, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4, overflow: 'hidden', background: '#ffffff08' }}>
+      <img
+        src={`https://flagcdn.com/w80/${code}.png`}
+        alt={name}
+        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+      />
+    </span>
   )
 }
 

@@ -19,7 +19,7 @@ const FLAGS_ABBR = {
   ARG:'ar', ALG:'dz', AUT:'at', POR:'pt', COD:'cd', ENG:'gb-eng', CRO:'hr',
   GHA:'gh', PAN:'pa', UZB:'uz', COL:'co', BOL:'bo', NGA:'ng', TAN:'tz',
   JAM:'jm', ISL:'is', PER:'pe', CMR:'cm', CRC:'cr', POL:'pl', CHI:'cl',
-  VEN:'ve', HON:'hn', SLV:'sv', GUA:'gt',
+  VEN:'ve', HON:'hn', SLV:'sv', GUA:'gt', SWE:'se', JOR:'jo',
 }
 
 // Name fallback (for picks/other places without abbr)
@@ -181,13 +181,15 @@ function MatchPicks({ homeTeam, awayTeam, byTeam }) {
 
 function Flag({ name, abbr }) {
   const code = flagCode(name, abbr)
-  if (!code) return <span style={{ width: 20, height: 14, display: 'inline-block', background: '#ffffff18', borderRadius: 2, flexShrink: 0 }} />
+  if (!code) return <span style={{ width: 24, height: 16, display: 'inline-block', background: '#ffffff18', borderRadius: 2, flexShrink: 0 }} />
   return (
-    <img
-      src={`https://flagcdn.com/w40/${code}.png`}
-      alt={name}
-      style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }}
-    />
+    <span style={{ width: 24, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: 2, overflow: 'hidden', background: '#ffffff08' }}>
+      <img
+        src={`https://flagcdn.com/w40/${code}.png`}
+        alt={name}
+        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+      />
+    </span>
   )
 }
 
