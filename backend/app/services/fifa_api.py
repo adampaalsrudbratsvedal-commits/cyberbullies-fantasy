@@ -118,10 +118,15 @@ async def fetch_fixtures(db=None) -> list[dict]:
                 "stageLabel": stage_label,
                 "homeSquadName": t.get("homeSquadName"),
                 "awaySquadName": t.get("awaySquadName"),
+                "homeSquadAbbr": t.get("homeSquadAbbr"),
+                "awaySquadAbbr": t.get("awaySquadAbbr"),
                 "homeScore": t.get("homeScore"),
                 "awayScore": t.get("awayScore"),
+                "homePenaltyScore": t.get("homePenaltyScore"),
+                "awayPenaltyScore": t.get("awayPenaltyScore"),
                 "date": t.get("date"),
                 "venueName": t.get("venueName"),
+                "venueCity": t.get("venueCity"),
                 "status": status,
             })
 

@@ -9,21 +9,41 @@ import { TH } from '../lib/theme'
 
 // ── Flagg-mapping ─────────────────────────────────────────────
 
+// FIFA abbr → flagcdn ISO code
+const FLAGS_ABBR = {
+  MEX:'mx', RSA:'za', KOR:'kr', CZE:'cz', CAN:'ca', BIH:'ba', USA:'us',
+  PAR:'py', QAT:'qa', SUI:'ch', BRA:'br', MAR:'ma', HAI:'ht', SCO:'gb-sct',
+  AUS:'au', TUR:'tr', GER:'de', CUW:'cw', NED:'nl', JPN:'jp', CIV:'ci',
+  ECU:'ec', TUN:'tn', BEL:'be', EGY:'eg', IRN:'ir', NZL:'nz', ESP:'es',
+  CPV:'cv', KSA:'sa', URU:'uy', FRA:'fr', SEN:'sn', IRQ:'iq', NOR:'no',
+  ARG:'ar', ALG:'dz', AUT:'at', POR:'pt', COD:'cd', ENG:'gb-eng', CRO:'hr',
+  GHA:'gh', PAN:'pa', UZB:'uz', COL:'co', BOL:'bo', NGA:'ng', TAN:'tz',
+  JAM:'jm', ISL:'is', PER:'pe', CMR:'cm', CRC:'cr', POL:'pl', CHI:'cl',
+  VEN:'ve', HON:'hn', SLV:'sv', GUA:'gt',
+}
+
+// Name fallback (for picks/other places without abbr)
 const FLAGS = {
-  'Mexico': 'mx', 'South Africa': 'za', 'South Korea': 'kr', 'Korea Republic': 'kr',
-  'Czechia': 'cz', 'Canada': 'ca', 'Bosnia-Herzegovina': 'ba', 'United States': 'us',
-  'Paraguay': 'py', 'Qatar': 'qa', 'Switzerland': 'ch', 'Brazil': 'br',
-  'Morocco': 'ma', 'Haiti': 'ht', 'Scotland': 'gb-sct', 'Australia': 'au',
-  'Turkey': 'tr', 'Türkiye': 'tr', 'Germany': 'de', 'Curaçao': 'cw',
-  'Netherlands': 'nl', 'Japan': 'jp', "Côte d'Ivoire": 'ci', 'Ivory Coast': 'ci',
-  'Ecuador': 'ec', 'Sweden': 'se', 'Tunisia': 'tn', 'Belgium': 'be',
-  'Egypt': 'eg', 'Iran': 'ir', 'IR Iran': 'ir', 'New Zealand': 'nz',
-  'Spain': 'es', 'Cape Verde Islands': 'cv', 'Cabo Verde': 'cv',
-  'Saudi Arabia': 'sa', 'Uruguay': 'uy', 'France': 'fr', 'Senegal': 'sn',
-  'Iraq': 'iq', 'Norway': 'no', 'Argentina': 'ar', 'Algeria': 'dz',
-  'Austria': 'at', 'Jordan': 'jo', 'Portugal': 'pt', 'Congo DR': 'cd',
-  'England': 'gb-eng', 'Croatia': 'hr', 'Ghana': 'gh', 'Panama': 'pa',
-  'Uzbekistan': 'uz', 'Colombia': 'co',
+  'Mexico':'mx','South Africa':'za','South Korea':'kr','Korea Republic':'kr',
+  'Czech Republic':'cz','Czechia':'cz','Canada':'ca','Bosnia and Herzegovina':'ba',
+  'Bosnia-Herzegovina':'ba','United States':'us','USA':'us','Paraguay':'py',
+  'Qatar':'qa','Switzerland':'ch','Brazil':'br','Morocco':'ma','Haiti':'ht',
+  'Scotland':'gb-sct','Australia':'au','Turkey':'tr','Türkiye':'tr','Germany':'de',
+  'Curaçao':'cw','Netherlands':'nl','Japan':'jp',"Côte d'Ivoire":'ci','Ivory Coast':'ci',
+  'Ecuador':'ec','Tunisia':'tn','Belgium':'be','Egypt':'eg','Iran':'ir','IR Iran':'ir',
+  'New Zealand':'nz','Spain':'es','Cape Verde Islands':'cv','Cape Verde':'cv',
+  'Saudi Arabia':'sa','Uruguay':'uy','France':'fr','Senegal':'sn','Iraq':'iq',
+  'Norway':'no','Argentina':'ar','Algeria':'dz','Austria':'at','Portugal':'pt',
+  'Congo DR':'cd','DR Congo':'cd','England':'gb-eng','Croatia':'hr','Ghana':'gh',
+  'Panama':'pa','Uzbekistan':'uz','Colombia':'co','Bolivia':'bo','Nigeria':'ng',
+  'Tanzania':'tz','Jamaica':'jm','Iceland':'is','Peru':'pe','Cameroon':'cm',
+  'Costa Rica':'cr','Poland':'pl','Chile':'cl','Venezuela':'ve','Honduras':'hn',
+  'El Salvador':'sv','Guatemala':'gt',
+}
+
+function flagCode(name, abbr) {
+  if (abbr && FLAGS_ABBR[abbr]) return FLAGS_ABBR[abbr]
+  return FLAGS[name] || null
 }
 
 // ── Team name normalisation (mirrors backend) ─────────────────────────────
@@ -159,12 +179,12 @@ function MatchPicks({ homeTeam, awayTeam, byTeam }) {
   )
 }
 
-function Flag({ name }) {
-  const code = FLAGS[name]
-  if (!code) return null
+function Flag({ name, abbr }) {
+  const code = flagCode(name, abbr)
+  if (!code) return <span style={{ width: 20, height: 14, display: 'inline-block', background: '#ffffff18', borderRadius: 2, flexShrink: 0 }} />
   return (
     <img
-      src={`https://flagcdn.com/w20/${code}.png`}
+      src={`https://flagcdn.com/w40/${code}.png`}
       alt={name}
       style={{ width: 20, height: 14, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }}
     />
@@ -220,6 +240,8 @@ function MatchCard({ match, byTeam }) {
 
   const homeTeam = match.homeSquadName || '—'
   const awayTeam = match.awaySquadName || '—'
+  const homeAbbr = match.homeSquadAbbr
+  const awayAbbr = match.awaySquadAbbr
   const homeScore = match.homeScore
   const awayScore = match.awayScore
   const hasScore = homeScore !== null && awayScore !== null && homeScore !== undefined && awayScore !== undefined
@@ -278,7 +300,7 @@ function MatchCard({ match, byTeam }) {
             >
               {homeTeam}
             </span>
-            <Flag name={homeTeam} />
+            <Flag name={homeTeam} abbr={homeAbbr} />
           </div>
 
           {/* Score / VS */}
@@ -321,7 +343,7 @@ function MatchCard({ match, byTeam }) {
 
           {/* Bortelag */}
           <div className="flex items-center gap-1.5 min-w-0">
-            <Flag name={awayTeam} />
+            <Flag name={awayTeam} abbr={awayAbbr} />
             <span
               className="font-semibold truncate"
               style={{ fontSize: 14, color: TH.text, letterSpacing: '-0.01em' }}

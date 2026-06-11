@@ -5,21 +5,39 @@ import Pitch from '../components/Pitch'
 import Avatar from '../components/Avatar'
 import { TH } from '../lib/theme'
 
+const FLAGS_ABBR = {
+  MEX:'mx', RSA:'za', KOR:'kr', CZE:'cz', CAN:'ca', BIH:'ba', USA:'us',
+  PAR:'py', QAT:'qa', SUI:'ch', BRA:'br', MAR:'ma', HAI:'ht', SCO:'gb-sct',
+  AUS:'au', TUR:'tr', GER:'de', CUW:'cw', NED:'nl', JPN:'jp', CIV:'ci',
+  ECU:'ec', TUN:'tn', BEL:'be', EGY:'eg', IRN:'ir', NZL:'nz', ESP:'es',
+  CPV:'cv', KSA:'sa', URU:'uy', FRA:'fr', SEN:'sn', IRQ:'iq', NOR:'no',
+  ARG:'ar', ALG:'dz', AUT:'at', POR:'pt', COD:'cd', ENG:'gb-eng', CRO:'hr',
+  GHA:'gh', PAN:'pa', UZB:'uz', COL:'co', BOL:'bo', NGA:'ng', TAN:'tz',
+  JAM:'jm', ISL:'is', PER:'pe', CMR:'cm', CRC:'cr', POL:'pl', CHI:'cl',
+  VEN:'ve', HON:'hn', SLV:'sv', GUA:'gt',
+}
+
 const FLAGS = {
-  'Mexico': 'mx', 'South Africa': 'za', 'South Korea': 'kr', 'Korea Republic': 'kr',
-  'Czechia': 'cz', 'Canada': 'ca', 'Bosnia-Herzegovina': 'ba', 'United States': 'us',
-  'Paraguay': 'py', 'Qatar': 'qa', 'Switzerland': 'ch', 'Brazil': 'br',
-  'Morocco': 'ma', 'Haiti': 'ht', 'Scotland': 'gb-sct', 'Australia': 'au',
-  'Turkey': 'tr', 'Türkiye': 'tr', 'Germany': 'de', 'Curaçao': 'cw',
-  'Netherlands': 'nl', 'Japan': 'jp', "Côte d'Ivoire": 'ci', 'Ivory Coast': 'ci',
-  'Ecuador': 'ec', 'Sweden': 'se', 'Tunisia': 'tn', 'Belgium': 'be',
-  'Egypt': 'eg', 'Iran': 'ir', 'IR Iran': 'ir', 'New Zealand': 'nz',
-  'Spain': 'es', 'Cape Verde Islands': 'cv', 'Cabo Verde': 'cv',
-  'Saudi Arabia': 'sa', 'Uruguay': 'uy', 'France': 'fr', 'Senegal': 'sn',
-  'Iraq': 'iq', 'Norway': 'no', 'Argentina': 'ar', 'Algeria': 'dz',
-  'Austria': 'at', 'Jordan': 'jo', 'Portugal': 'pt', 'Congo DR': 'cd',
-  'England': 'gb-eng', 'Croatia': 'hr', 'Ghana': 'gh', 'Panama': 'pa',
-  'Uzbekistan': 'uz', 'Colombia': 'co',
+  'Mexico':'mx','South Africa':'za','South Korea':'kr','Korea Republic':'kr',
+  'Czech Republic':'cz','Czechia':'cz','Canada':'ca','Bosnia and Herzegovina':'ba',
+  'Bosnia-Herzegovina':'ba','United States':'us','USA':'us','Paraguay':'py',
+  'Qatar':'qa','Switzerland':'ch','Brazil':'br','Morocco':'ma','Haiti':'ht',
+  'Scotland':'gb-sct','Australia':'au','Turkey':'tr','Türkiye':'tr','Germany':'de',
+  'Curaçao':'cw','Netherlands':'nl','Japan':'jp',"Côte d'Ivoire":'ci','Ivory Coast':'ci',
+  'Ecuador':'ec','Tunisia':'tn','Belgium':'be','Egypt':'eg','Iran':'ir','IR Iran':'ir',
+  'New Zealand':'nz','Spain':'es','Cape Verde Islands':'cv','Cape Verde':'cv',
+  'Saudi Arabia':'sa','Uruguay':'uy','France':'fr','Senegal':'sn','Iraq':'iq',
+  'Norway':'no','Argentina':'ar','Algeria':'dz','Austria':'at','Portugal':'pt',
+  'Congo DR':'cd','DR Congo':'cd','England':'gb-eng','Croatia':'hr','Ghana':'gh',
+  'Panama':'pa','Uzbekistan':'uz','Colombia':'co','Bolivia':'bo','Nigeria':'ng',
+  'Tanzania':'tz','Jamaica':'jm','Iceland':'is','Peru':'pe','Cameroon':'cm',
+  'Costa Rica':'cr','Poland':'pl','Chile':'cl','Venezuela':'ve','Honduras':'hn',
+  'El Salvador':'sv','Guatemala':'gt',
+}
+
+function flagCode(name, abbr) {
+  if (abbr && FLAGS_ABBR[abbr]) return FLAGS_ABBR[abbr]
+  return FLAGS[name] || null
 }
 
 const TEAM_ALIASES = {
@@ -54,8 +72,8 @@ function formatDate(dateStr) {
   } catch { return dateStr }
 }
 
-function FlagLarge({ name }) {
-  const code = FLAGS[name]
+function FlagLarge({ name, abbr }) {
+  const code = flagCode(name, abbr)
   if (!code) return <div style={{ width: 48, height: 32, borderRadius: 4, background: TH.card }} />
   return (
     <img
@@ -101,7 +119,7 @@ function MatchHeader({ match }) {
       <div className="grid items-center px-6 py-5" style={{ gridTemplateColumns: '1fr auto 1fr', gap: 16 }}>
         {/* Hjemmelag */}
         <div className="flex flex-col items-center gap-2 text-center">
-          <FlagLarge name={match.homeSquadName} />
+          <FlagLarge name={match.homeSquadName} abbr={match.homeSquadAbbr} />
           <span className="font-bold" style={{ fontSize: 20, color: TH.text, letterSpacing: '-0.02em' }}>
             {match.homeSquadName}
           </span>
@@ -132,7 +150,7 @@ function MatchHeader({ match }) {
 
         {/* Bortelag */}
         <div className="flex flex-col items-center gap-2 text-center">
-          <FlagLarge name={match.awaySquadName} />
+          <FlagLarge name={match.awaySquadName} abbr={match.awaySquadAbbr} />
           <span className="font-bold" style={{ fontSize: 20, color: TH.text, letterSpacing: '-0.02em' }}>
             {match.awaySquadName}
           </span>
