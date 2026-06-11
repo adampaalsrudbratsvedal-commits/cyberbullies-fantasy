@@ -125,19 +125,20 @@ async def get_scorers_endpoint(db: Session = Depends(get_db)):
 
 @router.get("/fixtures-debug-raw")
 async def get_fixtures_debug_raw(db: Session = Depends(get_db)):
-    """Probe FIFA Fantasy JSON endpoints to find fixtures/rounds data."""
+    """Probe FIFA public API with date filter + Fantasy JSON for WC 2026 fixtures."""
     import httpx
     from ..services.fifa_api import _headers
     candidates = [
-        "https://play.fifa.com/json/fantasy/rounds.json",
+        # Date-filtered FIFA public API
+        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&count=5&language=en&dateFrom=2026-06-01",
+        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&count=5&language=en&from=2026-06-01",
+        "https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&count=5&language=en&startDate=2026-06-01",
+        # FIFA Fantasy JSON (same base as players.json / squads.json)
         "https://play.fifa.com/json/fantasy/fixtures.json",
         "https://play.fifa.com/json/fantasy/matches.json",
         "https://play.fifa.com/json/fantasy/schedule.json",
+        "https://play.fifa.com/json/fantasy/rounds.json",
         "https://play.fifa.com/json/fantasy/gameweeks.json",
-        "https://play.fifa.com/json/fantasy/calendar.json",
-        "https://play.fifa.com/api/en/fantasy/rounds",
-        "https://play.fifa.com/api/en/fantasy/fixtures",
-        "https://play.fifa.com/api/en/fantasy/matches",
     ]
     results = {}
     async with httpx.AsyncClient() as client:
@@ -147,9 +148,10 @@ async def get_fixtures_debug_raw(db: Session = Depends(get_db)):
                 if resp.status_code == 200:
                     data = resp.json()
                     if isinstance(data, list):
-                        results[url] = {"ok": True, "count": len(data), "sample": str(data[:1])[:400]}
+                        first = data[0] if data else {}
+                        results[url] = {"ok": True, "count": len(data), "sample_keys": list(first.keys()) if isinstance(first, dict) else str(first)[:200]}
                     else:
-                        results[url] = {"ok": True, "keys": list(data.keys())[:10], "sample": str(data)[:400]}
+                        results[url] = {"ok": True, "keys": list(data.keys())[:10], "sample": str(data)[:300]}
                 else:
                     results[url] = {"status": resp.status_code}
             except Exception as e:
