@@ -14,11 +14,11 @@ def _headers() -> dict:
 async def _get(url: str, db=None) -> dict:
     await token_manager.ensure_fresh(db)
     async with httpx.AsyncClient() as client:
-        resp = await client.get(url, headers=_headers(), timeout=8)
+        resp = await client.get(url, headers=_headers(), timeout=5)
         if resp.status_code == 401:
             refreshed = await token_manager.refresh(db)
             if refreshed:
-                resp = await client.get(url, headers=_headers(), timeout=8)
+                resp = await client.get(url, headers=_headers(), timeout=5)
         resp.raise_for_status()
         return resp.json()
 
