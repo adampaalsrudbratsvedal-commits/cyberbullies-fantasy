@@ -16,8 +16,12 @@ TOTAL_ROUNDS = 8
 
 @router.get("/standings")
 async def get_standings(db: Session = Depends(get_db)):
-    ranks = await fetch_standings(db)
-    return ranks
+    import traceback
+    try:
+        ranks = await fetch_standings(db)
+        return ranks
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
 
 
 @router.get("/history")
