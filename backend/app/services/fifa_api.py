@@ -70,10 +70,9 @@ _FIFA_STAGE_MAP = {
 
 async def fetch_fixtures(db=None) -> list[dict]:
     """Fetch all WC 2026 fixtures + scores from FIFA public API."""
-    # WC 2026: idCompetition=17, idSeason=278513
     url = (
         "https://api.fifa.com/api/v3/calendar/matches"
-        "?idCompetition=17&idSeason=278513&count=200&language=en"
+        "?idCompetition=17&count=200&language=en"
     )
     async with httpx.AsyncClient() as client:
         resp = await client.get(
@@ -94,23 +93,23 @@ async def fetch_fixtures(db=None) -> list[dict]:
         stage_id = str(m.get("IdStage", "1"))
         stage, stage_label = _FIFA_STAGE_MAP.get(stage_id, ("GROUP", "Gruppespill"))
 
-        group_name = (m.get("GroupName") or [{}])[0].get("Description", "")
         matchday_raw = m.get("MatchDay") or 1
-
         knockout_round_map = {"R32": 4, "R16": 5, "QF": 6, "SF": 7, "F": 8}
         round_id = knockout_round_map.get(stage, matchday_raw)
 
-        home_team = (m.get("Home") or {})
-        away_team = (m.get("Away") or {})
-        home_name = (home_team.get("TeamName") or [{}])[0].get("Description") or home_team.get("IdTeam", "")
-        away_name = (away_team.get("TeamName") or [{}])[0].get("Description") or away_team.get("IdTeam", "")
+        home_team = m.get("Home") or {}
+        away_team = m.get("Away") or {}
+        home_name_list = home_team.get("TeamName") or [{}]
+        away_name_list = away_team.get("TeamName") or [{}]
+        home_name = home_name_list[0].get("Description") if home_name_list else home_team.get("IdTeam", "")
+        away_name = away_name_list[0].get("Description") if away_name_list else away_team.get("IdTeam", "")
 
-        home_score = home_team.get("Score")
-        away_score = away_team.get("Score")
+        home_score = m.get("HomeTeamScore")
+        away_score = m.get("AwayTeamScore")
 
-        venue_list = m.get("Venue") or {}
-        venue_name_list = venue_list.get("Name") or [{}]
-        venue = venue_name_list[0].get("Description") if venue_name_list else None
+        stadium = m.get("Stadium") or {}
+        stadium_name_list = stadium.get("Name") or [{}]
+        venue = stadium_name_list[0].get("Description") if stadium_name_list else None
 
         fixtures.append({
             "id": m.get("IdMatch"),
