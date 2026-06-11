@@ -16,12 +16,8 @@
   ],
   "crons": [
     {
-      "path": "/api/fantasy/sync-squads-cron",
-      "schedule": "0 */2 * * *"
-    },
-    {
       "path": "/api/league/sync-cron",
-      "schedule": "0 */2 * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
