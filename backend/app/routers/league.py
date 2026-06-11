@@ -111,8 +111,9 @@ async def get_history(db: Session = Depends(get_db)):
             ))
         db.commit()
         return result
-    except Exception:
-        return {}
+    except Exception as e:
+        import traceback
+        return {"_error": str(e), "_tb": traceback.format_exc()[-500:]}
 
 
 @router.get("/stats")
