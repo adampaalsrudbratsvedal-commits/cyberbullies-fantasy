@@ -709,9 +709,16 @@ export default function Stats() {
             </p>
             {[
               { name: 'Apb03', cm: '21,3 cm' },
+              { name: 'Aibo FC', cm: '20,4 cm' },
+              { name: 'RithiP', cm: '19,1 cm' },
               { name: 'Odin67', cm: '18,2 cm' },
+              { name: 'oskarop', cm: '16,7 cm' },
               { name: 'KalkunBlaster', cm: '15,0 cm' },
+              { name: 'T-bag637273', cm: '14,2 cm' },
+              { name: 'Jaeger FC', cm: '13,8 cm' },
               { name: 'LeonC', cm: '12,3 cm' },
+              { name: 'hansssb', cm: '11,4 cm' },
+              { name: 'sa1ut', cm: '9,6 cm' },
             ].map((p, i) => (
               <div
                 key={p.name}
