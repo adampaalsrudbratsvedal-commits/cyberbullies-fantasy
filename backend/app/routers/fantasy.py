@@ -256,10 +256,7 @@ def debug_team_names(db: Session = Depends(get_db)):
 
 
 @router.post("/sync-squads")
-async def sync_squads(
-    db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
-):
+async def sync_squads(db: Session = Depends(get_db)):
     """
     Fetch squad picks for every league participant from FIFA Fantasy API.
     Uses bulk DB operations to stay within Vercel's 10s function timeout.
@@ -294,55 +291,49 @@ async def sync_squads(
             errors.append(f"{username}: {e}")
             continue
 
-        picks_raw = (
-            squad_data.get("picks")
-            or squad_data.get("players")
-            or squad_data.get("squad")
-            or []
-        )
+        # Parse new format: lineup/bench dicts with player ID lists
+        lineup = squad_data.get("lineup") or {}
+        bench = squad_data.get("bench") or {}
+        captain_id = squad_data.get("captain")
+        vice_id = squad_data.get("vice")
 
-        if not picks_raw:
-            errors.append(
-                f"{username}: ingen picks "
-                f"(keys: {[k for k in squad_data if k != '_url_used']})"
-            )
+        # Flatten starting XI
+        starting_ids = []
+        for pos_players in lineup.values():
+            starting_ids.extend(pos_players or [])
+
+        # Flatten bench
+        bench_ids = []
+        for pos_players in bench.values():
+            bench_ids.extend(pos_players or [])
+
+        all_ids = starting_ids + bench_ids
+        if not all_ids:
+            errors.append(f"{username}: ingen picks (keys: {list(squad_data.keys())})")
             continue
 
         processed_user_ids.append(user_id)
 
-        for slot_idx, pick in enumerate(picks_raw, start=1):
-            player_id = pick.get("playerId") or pick.get("id")
+        for slot_idx, player_id in enumerate(all_ids, start=1):
             if not player_id:
                 continue
 
-            p_name = (
-                pick.get("playerName") or pick.get("name")
-                or pick.get("shortName") or pick.get("displayName")
-            )
-            raw_team = (
-                pick.get("teamName") or pick.get("nationalTeam")
-                or (pick.get("team", {}).get("name") if isinstance(pick.get("team"), dict) else None)
-                or pick.get("countryName")
-            )
-            norm_team = normalise_team(raw_team) if raw_team else None
-
-            # Fall back to pre-loaded dict — no extra DB call per pick
-            if not norm_team:
-                pl = player_lookup.get(player_id)
-                if pl and pl.national_team_name:
-                    norm_team = pl.national_team_name
+            pl = player_lookup.get(player_id)
+            norm_team = None
+            if pl and pl.national_team_name:
+                norm_team = pl.national_team_name
 
             rows.append({
-                "fifa_user_id":      user_id,
-                "fifa_username":     username,
-                "player_id":         player_id,
-                "player_name":       p_name,
-                "national_team_name":norm_team,
-                "position_slot":     pick.get("position", slot_idx),
-                "is_captain":        bool(pick.get("isCaptain") or pick.get("captain")),
-                "is_vice_captain":   bool(pick.get("isViceCaptain") or pick.get("viceCaptain")),
-                "is_starting":       bool(pick.get("isStarting", pick.get("active", slot_idx <= 11))),
-                "synced_round":      current_round,
+                "fifa_user_id":       user_id,
+                "fifa_username":      username,
+                "player_id":          player_id,
+                "player_name":        pl.name if pl else None,
+                "national_team_name": norm_team,
+                "position_slot":      slot_idx,
+                "is_captain":         player_id == captain_id,
+                "is_vice_captain":    player_id == vice_id,
+                "is_starting":        player_id in starting_ids,
+                "synced_round":       current_round,
             })
 
     # One DELETE for all processed users, then one bulk INSERT
