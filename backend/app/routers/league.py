@@ -8,10 +8,22 @@ from ..models.round_score import RoundScore
 from ..models.probability_snapshot import ProbabilitySnapshot
 from ..services.simulation import run_monte_carlo
 from ..services.fifa_api import fetch_standings, fetch_fixtures, fetch_rounds, fetch_gamebar, fetch_groups, fetch_scorers
+from ..services.sync import sync_league
 
 router = APIRouter(prefix="/api/league", tags=["league"])
 
 TOTAL_ROUNDS = 8
+
+
+@router.post("/sync")
+@router.get("/sync-cron")
+async def sync_endpoint(db: Session = Depends(get_db)):
+    """Sync round scores + probability snapshots from live standings."""
+    import traceback
+    try:
+        return await sync_league(db)
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
 
 
 @router.get("/standings")
