@@ -40,6 +40,34 @@ async def get_standings(db: Session = Depends(get_db)):
     import traceback
     try:
         ranks = await fetch_standings(db)
+        # Auto-save round scores whenever standings are fetched
+        try:
+            for rank in ranks:
+                if rank.get("roundId") is None:
+                    continue
+                existing = (
+                    db.query(RoundScore)
+                    .filter_by(fifa_user_id=rank["userId"], round_id=rank["roundId"])
+                    .first()
+                )
+                if existing:
+                    existing.round_points   = rank.get("roundPoints")
+                    existing.overall_points = rank.get("overallPoints")
+                    existing.overall_rank   = rank.get("overallRank")
+                    existing.round_rank     = rank.get("roundRank")
+                else:
+                    db.add(RoundScore(
+                        fifa_user_id    = rank["userId"],
+                        fifa_username   = rank["userName"],
+                        round_id        = rank["roundId"],
+                        round_points    = rank.get("roundPoints"),
+                        overall_points  = rank.get("overallPoints"),
+                        overall_rank    = rank.get("overallRank"),
+                        round_rank      = rank.get("roundRank"),
+                    ))
+            db.commit()
+        except Exception:
+            pass  # Don't break standings if save fails
         return ranks
     except Exception as e:
         return {"error": str(e), "traceback": traceback.format_exc()}
