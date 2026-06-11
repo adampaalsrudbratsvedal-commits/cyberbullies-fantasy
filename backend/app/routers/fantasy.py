@@ -193,6 +193,54 @@ def get_all_match_picks(db: Session = Depends(get_db)):
     return {"byTeam": by_team}
 
 
+@router.get("/probe-picks-endpoints")
+async def probe_picks_endpoints(db: Session = Depends(get_db)):
+    """Find the correct FIFA Fantasy endpoint for user squad picks."""
+    import httpx
+    from ..services.fifa_api import _headers, settings
+    try:
+        ranks = await fetch_standings(db)
+    except Exception as e:
+        return {"error": str(e)}
+    if not ranks:
+        return {"error": "No standings returned"}
+
+    rank = ranks[0]
+    user_id = rank.get("userId")
+    team_id = rank.get("teamId") or user_id
+    username = rank.get("userName")
+
+    base = settings.fifa_base_url
+    candidates = [
+        f"{base}/picks/{team_id}",
+        f"{base}/picks/team/{team_id}",
+        f"{base}/team/{team_id}",
+        f"{base}/team/{team_id}/picks",
+        f"{base}/entries/{team_id}",
+        f"{base}/entries/{team_id}/picks",
+        f"{base}/user/{user_id}/picks",
+        f"{base}/user/{user_id}/team",
+        f"{base}/picks?teamId={team_id}",
+        f"{base}/squad/{team_id}",
+        f"{base}/gamebar?roundId=1&teamId={team_id}",
+        f"{base}/round/1/picks/{team_id}",
+        f"{base}/picks/round/1?teamId={team_id}",
+    ]
+    results = {"user_id": user_id, "team_id": team_id, "username": username, "endpoints": {}}
+    async with httpx.AsyncClient() as client:
+        for url in candidates:
+            try:
+                resp = await client.get(url, headers=_headers(), timeout=5)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    results["endpoints"][url] = {"status": 200, "sample": str(data)[:300]}
+                else:
+                    results["endpoints"][url] = {"status": resp.status_code}
+            except Exception as e:
+                results["endpoints"][url] = {"error": str(e)[:80]}
+    return results
+
+
 @router.get("/debug-team-names")
 def debug_team_names(db: Session = Depends(get_db)):
     """Show all unique national_team_name values stored in squad picks."""
