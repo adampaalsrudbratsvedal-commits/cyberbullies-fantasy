@@ -116,40 +116,46 @@ async def fetch_groups() -> dict:
         return resp.json()
 
 
+FIFA_JSON_BASE = "https://play.fifa.com/json/fantasy"
+
+
 async def fetch_fifa_squads(db=None) -> list[dict]:
-    """Fetch all WC 2026 national teams from FIFA Fantasy API."""
-    data = await _get(f"{settings.fifa_base_url}/squads", db)
-    # Handle both list and wrapped response
+    """Fetch all WC 2026 national teams from FIFA Fantasy JSON."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{FIFA_JSON_BASE}/squads.json", headers=_headers(), timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
     if isinstance(data, list):
         return data
-    return data.get("squads") or data.get("data") or data.get("success") or []
+    return data.get("squads") or data.get("data") or []
 
 
 async def fetch_fifa_players(db=None) -> list[dict]:
-    """Fetch all WC 2026 players from FIFA Fantasy API."""
-    data = await _get(f"{settings.fifa_base_url}/players", db)
+    """Fetch all WC 2026 players from FIFA Fantasy JSON."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"{FIFA_JSON_BASE}/players.json", headers=_headers(), timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
     if isinstance(data, list):
         return data
-    return data.get("players") or data.get("data") or data.get("success") or []
+    return data.get("players") or data.get("data") or []
 
 
 async def probe_fifa_data_endpoints(db=None) -> dict:
-    """Probe likely FIFA Fantasy endpoints for teams and players."""
-    candidates = [
-        "/squads", "/players", "/tournament/squads", "/tournament/players",
-        "/squads?limit=200", "/players?limit=2000",
-    ]
+    """Probe FIFA Fantasy JSON endpoints."""
     results = {}
-    for path in candidates:
-        url = f"{settings.fifa_base_url}{path}"
+    for url in [f"{FIFA_JSON_BASE}/squads.json", f"{FIFA_JSON_BASE}/players.json"]:
         try:
-            data = await _get(url, db)
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(url, headers=_headers(), timeout=15)
+                resp.raise_for_status()
+                data = resp.json()
             if isinstance(data, list):
-                results[path] = {"status": "ok", "type": "list", "count": len(data), "sample": data[:2]}
+                results[url] = {"status": "ok", "type": "list", "count": len(data), "sample": data[:2]}
             else:
-                results[path] = {"status": "ok", "type": "dict", "keys": list(data.keys()), "sample": str(data)[:300]}
+                results[url] = {"status": "ok", "keys": list(data.keys()), "sample": str(data)[:300]}
         except Exception as e:
-            results[path] = {"status": "error", "error": str(e)}
+            results[url] = {"status": "error", "error": str(e)}
     return results
 
 
