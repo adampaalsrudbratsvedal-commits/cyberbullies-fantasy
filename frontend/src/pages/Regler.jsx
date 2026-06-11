@@ -3,7 +3,7 @@ export default function Regler() {
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       {/* Bakgrunn */}
       <img
-        src="/reglerBakgrunn.jpg"
+        src="/World_Cup_Background.jpg"
         alt=""
         style={{
           position: 'fixed',
