@@ -123,6 +123,23 @@ async def get_scorers_endpoint(db: Session = Depends(get_db)):
         return {"scorers": [], "error": str(e)}
 
 
+@router.get("/fixtures-debug-rounds")
+async def get_fixtures_debug_rounds(db: Session = Depends(get_db)):
+    """Show full structure of first tournament in rounds.json."""
+    import httpx
+    from ..services.fifa_api import _headers
+    async with httpx.AsyncClient() as client:
+        resp = await client.get("https://play.fifa.com/json/fantasy/rounds.json", headers=_headers(), timeout=8)
+        data = resp.json()
+    round1 = data[0] if isinstance(data, list) and data else data
+    tournaments = round1.get("tournaments", []) if isinstance(round1, dict) else []
+    return {
+        "round_keys": list(round1.keys()) if isinstance(round1, dict) else "?",
+        "tournaments_count": len(tournaments),
+        "tournament_sample": tournaments[0] if tournaments else None,
+    }
+
+
 @router.get("/fixtures-debug-raw")
 async def get_fixtures_debug_raw(db: Session = Depends(get_db)):
     """Probe various sources for WC 2026 fixture data."""
