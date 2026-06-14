@@ -308,14 +308,9 @@ async def fix_squad_with_cookies(
     fifa_user_id: int,
     fifa_username: str,
     cookie_string: str,
-    secret: str,
     db: Session = Depends(get_db),
 ):
     """One-off: sync a single user's squad using their full browser cookie string."""
-    from ..config import settings as cfg
-    if secret != cfg.secret_key:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="Bad secret")
 
     from ..services.fifa_api import fetch_user_squad
     from ..models.fantasy_player import FantasyPlayer
