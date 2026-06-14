@@ -11,6 +11,7 @@ import Kamper from './pages/Kamper'
 import VMBracket from './pages/VMBracket'
 import Squads from './pages/Squads'
 import KampDetalj from './pages/KampDetalj'
+import Profile from './pages/Profile'
 import { TH } from './lib/theme'
 
 class PageBoundary extends Component {
@@ -44,6 +45,7 @@ export default function App() {
               <Route path="/vm-bracket" element={W(VMBracket)} />
               <Route path="/lag" element={W(Squads)} />
               <Route path="/admin" element={W(Admin)} />
+              <Route path="/profil" element={W(Profile)} />
               <Route path="/kamper/:matchId" element={W(KampDetalj)} />
             </Routes>
           </main>

@@ -15,6 +15,7 @@ except Exception as e:
 _MIGRATIONS = [
     "ALTER TABLE fantasy_squad_picks ADD COLUMN IF NOT EXISTS player_name VARCHAR",
     "ALTER TABLE fantasy_squad_picks ADD COLUMN IF NOT EXISTS national_team_name VARCHAR",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS fifa_sid VARCHAR",
 ]
 try:
     from sqlalchemy import text as _text

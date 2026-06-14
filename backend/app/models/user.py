@@ -9,3 +9,4 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     fifa_username = Column(String, nullable=True)
     is_admin = Column(Boolean, default=False)
+    fifa_sid = Column(String, nullable=True)

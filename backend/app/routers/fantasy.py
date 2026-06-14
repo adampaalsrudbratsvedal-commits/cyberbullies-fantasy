@@ -321,6 +321,13 @@ async def sync_squads(db: Session = Depends(get_db)):
         p.id: p for p in db.query(FantasyPlayer).all()
     }
 
+    # Build lookup: fifa_username (case-insensitive) → user's own SID
+    from ..models.user import User as AppUser
+    user_sids: dict[str, str] = {}
+    for u in db.query(AppUser).filter(AppUser.fifa_sid.isnot(None)).all():
+        if u.fifa_username:
+            user_sids[u.fifa_username.lower()] = u.fifa_sid
+
     errors: list[str] = []
     rows: list[dict] = []
     processed_user_ids: list[int] = []
@@ -333,8 +340,10 @@ async def sync_squads(db: Session = Depends(get_db)):
         if not user_id:
             continue
 
+        own_sid = user_sids.get((username or "").lower())
+
         try:
-            squad_data = await fetch_user_squad(team_id, db)
+            squad_data = await fetch_user_squad(team_id, db, user_sid=own_sid)
         except Exception as e:
             errors.append(f"{username}: {e}")
             continue

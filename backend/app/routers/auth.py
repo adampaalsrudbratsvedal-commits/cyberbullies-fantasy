@@ -61,4 +61,25 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 
 @router.get("/me")
 def me(current_user: User = Depends(get_current_user)):
-    return {"username": current_user.username, "fifa_username": current_user.fifa_username, "is_admin": current_user.is_admin}
+    return {
+        "username": current_user.username,
+        "fifa_username": current_user.fifa_username,
+        "is_admin": current_user.is_admin,
+        "has_fifa_sid": bool(current_user.fifa_sid),
+    }
+
+
+class FifaSidUpdate(BaseModel):
+    fifa_sid: str
+
+
+@router.put("/me/fifa-sid")
+def update_fifa_sid(data: FifaSidUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Store the user's own FIFA X-SID cookie for accurate mid-round squad sync."""
+    sid = data.fifa_sid.strip()
+    # Accept full cookie string like "X-SID=abc123" or just the value
+    if sid.startswith("X-SID="):
+        sid = sid[len("X-SID="):]
+    current_user.fifa_sid = sid
+    db.commit()
+    return {"ok": True}

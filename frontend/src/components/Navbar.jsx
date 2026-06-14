@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../AuthContext'
 import LoginModal from './LoginModal'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [showLogin, setShowLogin] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
@@ -57,7 +58,12 @@ export default function Navbar() {
             <div className="hidden md:flex items-center gap-3">
               {user ? (
                 <>
-                  <span className="text-xs text-gray-400 uppercase tracking-wider">{user.username}</span>
+                  <button
+                    onClick={() => navigate('/profil')}
+                    className="text-xs text-gray-400 hover:text-white uppercase tracking-wider transition-colors"
+                  >
+                    {user.username}
+                  </button>
                   <button onClick={logout} className="text-xs text-gray-400 hover:text-white uppercase tracking-wider transition-colors">
                     Logg ut
                   </button>
@@ -107,7 +113,12 @@ export default function Navbar() {
             <div className="pt-2 border-t border-gray-800 mt-2">
               {user ? (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-400 uppercase">{user.username}</span>
+                  <button
+                    onClick={() => { navigate('/profil'); setMenuOpen(false) }}
+                    className="text-xs text-gray-400 hover:text-white uppercase"
+                  >
+                    {user.username}
+                  </button>
                   <button onClick={() => { logout(); setMenuOpen(false) }} className="text-xs text-gray-400 hover:text-white uppercase">
                     Logg ut
                   </button>
