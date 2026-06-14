@@ -77,8 +77,7 @@ class FifaSidUpdate(BaseModel):
 def update_fifa_sid(data: FifaSidUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Store the user's own FIFA X-SID cookie for accurate mid-round squad sync."""
     sid = data.fifa_sid.strip()
-    # Accept full cookie string like "X-SID=abc123" or just the value
-    if sid.startswith("X-SID="):
+    if sid.startswith("X-SID=") and ";" not in sid:
         sid = sid[len("X-SID="):]
     current_user.fifa_sid = sid
     db.commit()

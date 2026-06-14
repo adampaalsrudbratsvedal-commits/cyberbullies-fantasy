@@ -34,7 +34,9 @@ class SetUserSidBody(BaseModel):
 def set_user_sid(body: SetUserSidBody, db: Session = Depends(get_db), _: User = Depends(require_admin)):
     """Admin: set FIFA SID for any league user (by their fifa_username)."""
     sid = body.fifa_sid.strip()
-    if sid.startswith("X-SID="):
+    # If it's a full cookie string (contains multiple cookies), store as-is
+    # If it's just "X-SID=value", strip the prefix
+    if sid.startswith("X-SID=") and ";" not in sid:
         sid = sid[len("X-SID="):]
     user = db.query(User).filter(User.fifa_username == body.fifa_username).first()
     if not user:

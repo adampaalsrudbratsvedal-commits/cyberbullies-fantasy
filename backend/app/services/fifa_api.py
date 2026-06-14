@@ -240,14 +240,21 @@ _SQUAD_PATHS = [
 async def fetch_user_squad(user_id: int, db=None, user_sid: str | None = None) -> dict:
     """Fetch a user's fantasy squad picks from FIFA Fantasy API.
 
-    user_sid: if provided, use this user's own X-SID cookie instead of the
-    shared league SID. This gives access to mid-round substitutions[].
+    user_sid: if provided, use this as the full cookie string (or just X-SID value)
+    for the user's own session. This gives access to mid-round substitutions[].
     """
     url = f"{settings.fifa_base_url}/team/{user_id}"
     if user_sid:
-        from ..services.token_manager import token_manager
         headers = dict(_headers())
-        headers["cookie"] = f"X-SID={user_sid}; fp.user={token_manager._fp_user}"
+        # Accept either a full cookie string or just the X-SID value
+        if "=" in user_sid and ("bm_" in user_sid or "ak_" in user_sid or "Optanon" in user_sid):
+            # Full cookie string from browser — use as-is
+            headers["cookie"] = user_sid
+        else:
+            # Just the X-SID value — build minimal cookie string
+            sid_val = user_sid.lstrip("X-SID=")
+            from ..services.token_manager import token_manager
+            headers["cookie"] = f"X-SID={sid_val}; fp.user={token_manager._fp_user}"
     else:
         headers = _headers()
     async with httpx.AsyncClient() as client:
