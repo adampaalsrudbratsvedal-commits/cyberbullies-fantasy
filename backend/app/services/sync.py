@@ -85,6 +85,8 @@ async def sync_league(db: Session) -> dict:
 
 async def _sync_squads_inner(db: Session, ranks: list) -> dict:
     """Sync squad picks for all users. Called automatically as part of sync_league."""
+    import asyncio
+
     player_lookup: dict[int, FantasyPlayer] = {
         p.id: p for p in db.query(FantasyPlayer).all()
     }
@@ -98,22 +100,34 @@ async def _sync_squads_inner(db: Session, ranks: list) -> dict:
             user_sids[u.fifa_username.lower()] = u.fifa_sid
 
     current_round = db.query(func.max(RoundScore.round_id)).scalar() or 0
-    errors: list[str] = []
-    rows: list[dict] = []
-    processed_user_ids: list[int] = []
 
-    for rank in ranks:
+    # Fetch all squads in parallel to stay within Vercel's 10s timeout
+    async def fetch_one(rank):
         user_id  = rank.get("userId")
         username = rank.get("userName", f"user_{user_id}")
         team_id  = rank.get("teamId") or user_id
         if not user_id:
-            continue
-
+            return None
         own_sid = user_sids.get((username or "").lower())
         try:
-            squad_data = await fetch_user_squad(team_id, db, user_sid=own_sid)
+            data = await fetch_user_squad(team_id, db, user_sid=own_sid)
+            return (user_id, username, team_id, data)
         except Exception as e:
-            errors.append(f"{username}: {e}")
+            return (user_id, username, team_id, {"_error": str(e)})
+
+    results = await asyncio.gather(*[fetch_one(r) for r in ranks])
+
+    errors: list[str] = []
+    rows: list[dict] = []
+    processed_user_ids: list[int] = []
+
+    for item in results:
+        if item is None:
+            continue
+        user_id, username, team_id, squad_data = item
+
+        if "_error" in squad_data:
+            errors.append(f"{username}: {squad_data['_error']}")
             continue
 
         lineup = squad_data.get("lineup") or {}
