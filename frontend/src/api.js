@@ -39,5 +39,6 @@ export const debugFantasyPlayers = () => api.get('/fantasy/debug-players')
 export const getFantasyDbStats = () => api.get('/fantasy/db-stats')
 export const getAllMatchPicks = () => api.get('/fantasy/all-match-picks')
 export const updateFifaSid = (sid) => api.put('/auth/me/fifa-sid', { fifa_sid: sid })
+export const setUserFifaSid = (fifaUsername, sid) => api.post('/admin/set-user-sid', { fifa_username: fifaUsername, fifa_sid: sid })
 
 export default api

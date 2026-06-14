@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../AuthContext'
-import { triggerSync, syncFantasyPlayers, syncFantasySquads, debugFantasyPlayers, debugFantasySquad, getFantasyDbStats } from '../api'
+import { triggerSync, syncFantasyPlayers, syncFantasySquads, debugFantasyPlayers, debugFantasySquad, getFantasyDbStats, setUserFifaSid } from '../api'
 import { Navigate } from 'react-router-dom'
 
 function SyncCard({ title, description, buttonLabel, onSync, status, syncing }) {
@@ -53,6 +53,11 @@ export default function Admin() {
   const [probeLoading, setProbeLoading]     = useState(false)
   const [probeData, setProbeData]           = useState(null)
   const [dbStats, setDbStats]               = useState(null)
+
+  const [sidFifaUsername, setSidFifaUsername] = useState('')
+  const [sidValue, setSidValue]               = useState('')
+  const [sidStatus, setSidStatus]             = useState(null)
+  const [sidSaving, setSidSaving]             = useState(false)
 
   if (loading) return null
   if (!user?.is_admin) return <Navigate to="/" replace />
@@ -144,6 +149,21 @@ export default function Admin() {
     }
   }
 
+  // ── Set per-user FIFA SID ──────────────────────────────────────────────────
+  const handleSetSid = async () => {
+    setSidSaving(true)
+    setSidStatus(null)
+    try {
+      const r = await setUserFifaSid(sidFifaUsername, sidValue)
+      setSidStatus({ ok: true, message: `Lagret for ${r.data.fifa_username} (bruker: ${r.data.username})` })
+      setSidValue('')
+    } catch (e) {
+      setSidStatus({ ok: false, message: e.response?.data?.detail || e.message })
+    } finally {
+      setSidSaving(false)
+    }
+  }
+
   // ── DB stats ────────────────────────────────────────────────────────────────
   const handleDbStats = async () => {
     try {
@@ -188,7 +208,46 @@ export default function Admin() {
         status={squadStatus}
       />
 
-      {/* ── 4. Debug ── */}
+      {/* ── 4. Per-user FIFA SID ── */}
+      <section className="bg-slate-800 rounded-lg border border-slate-700 p-6 space-y-4">
+        <div>
+          <h2 className="text-white font-semibold mb-1">FIFA-sesjon per bruker</h2>
+          <p className="text-slate-400 text-sm">
+            Sett FIFA X-SID for en deltaker slik at appen henter riktig lag med bytter underveis i runden.
+            Bruk FIFA-brukernavnet (slik det vises i ligaen).
+          </p>
+        </div>
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={sidFifaUsername}
+            onChange={(e) => setSidFifaUsername(e.target.value)}
+            placeholder="FIFA-brukernavn (f.eks. Apb03)"
+            className="w-full bg-slate-700 border border-slate-600 text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-slate-400"
+          />
+          <input
+            type="text"
+            value={sidValue}
+            onChange={(e) => setSidValue(e.target.value)}
+            placeholder="X-SID-verdi (eller full cookie-streng)"
+            className="w-full bg-slate-700 border border-slate-600 text-white font-mono text-xs rounded px-3 py-2 focus:outline-none focus:border-slate-400"
+          />
+          <button
+            onClick={handleSetSid}
+            disabled={sidSaving || !sidFifaUsername.trim() || !sidValue.trim()}
+            className="w-full bg-blue-700 hover:bg-blue-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
+          >
+            {sidSaving ? 'Lagrer…' : 'Lagre FIFA-sesjon for bruker'}
+          </button>
+        </div>
+        {sidStatus && (
+          <div className={`text-sm px-3 py-2 rounded-lg ${sidStatus.ok ? 'bg-green-900/40 border border-green-700 text-green-300' : 'bg-red-900/40 border border-red-700 text-red-300'}`}>
+            {sidStatus.message}
+          </div>
+        )}
+      </section>
+
+      {/* ── 5. Debug ── */}
       <section className="bg-slate-800 rounded-lg border border-slate-700 p-6 space-y-4">
         <div>
           <h2 className="text-white font-semibold mb-1">Debug — API & Database</h2>
