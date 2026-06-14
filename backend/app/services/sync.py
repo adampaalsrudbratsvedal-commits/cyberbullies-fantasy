@@ -1,9 +1,11 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from .fifa_api import fetch_standings
+from .fifa_api import fetch_standings, fetch_user_squad
 from .simulation import run_monte_carlo
 from ..models.round_score import RoundScore
 from ..models.probability_snapshot import ProbabilitySnapshot
+from ..models.fantasy_squad_pick import FantasySquadPick
+from ..models.fantasy_player import FantasyPlayer
 
 TOTAL_ROUNDS = 8
 
@@ -68,10 +70,100 @@ async def sync_league(db: Session) -> dict:
         db.commit()
         snapshot_saved = True
 
+    # Also sync squad picks so mid-round substitutions are picked up automatically
+    squad_result = await _sync_squads_inner(db, ranks)
+
     return {
         "synced": updated,
         "rounds_played": rounds_played,
         "players_found": len(current_scores),
         "snapshot_saved": snapshot_saved,
         "ranks_raw": len(ranks),
+        "squad_sync": squad_result,
     }
+
+
+async def _sync_squads_inner(db: Session, ranks: list) -> dict:
+    """Sync squad picks for all users. Called automatically as part of sync_league."""
+    player_lookup: dict[int, FantasyPlayer] = {
+        p.id: p for p in db.query(FantasyPlayer).all()
+    }
+    if not player_lookup:
+        return {"skipped": "no players in db"}
+
+    from ..models.user import User as AppUser
+    user_sids: dict[str, str] = {}
+    for u in db.query(AppUser).filter(AppUser.fifa_sid.isnot(None)).all():
+        if u.fifa_username:
+            user_sids[u.fifa_username.lower()] = u.fifa_sid
+
+    current_round = db.query(func.max(RoundScore.round_id)).scalar() or 0
+    errors: list[str] = []
+    rows: list[dict] = []
+    processed_user_ids: list[int] = []
+
+    for rank in ranks:
+        user_id  = rank.get("userId")
+        username = rank.get("userName", f"user_{user_id}")
+        team_id  = rank.get("teamId") or user_id
+        if not user_id:
+            continue
+
+        own_sid = user_sids.get((username or "").lower())
+        try:
+            squad_data = await fetch_user_squad(team_id, db, user_sid=own_sid)
+        except Exception as e:
+            errors.append(f"{username}: {e}")
+            continue
+
+        lineup = squad_data.get("lineup") or {}
+        bench  = squad_data.get("bench")  or {}
+        captain_id = squad_data.get("captain")
+        vice_id    = squad_data.get("vice")
+
+        starting_ids = [pid for pos in lineup.values() for pid in (pos or [])]
+        bench_ids    = [pid for pos in bench.values()  for pid in (pos or [])]
+
+        for sub in (squad_data.get("substitutions") or []):
+            out_id = sub.get("out")
+            in_id  = sub.get("in")
+            if out_id and in_id and out_id in starting_ids and in_id not in starting_ids:
+                starting_ids.remove(out_id)
+                starting_ids.append(in_id)
+                if in_id in bench_ids:
+                    bench_ids.remove(in_id)
+                if out_id not in bench_ids:
+                    bench_ids.append(out_id)
+
+        all_ids = starting_ids + bench_ids
+        if not all_ids:
+            errors.append(f"{username}: ingen picks")
+            continue
+
+        processed_user_ids.append(user_id)
+        for slot_idx, player_id in enumerate(all_ids, start=1):
+            if not player_id:
+                continue
+            pl = player_lookup.get(player_id)
+            rows.append({
+                "fifa_user_id":       user_id,
+                "fifa_username":      username,
+                "player_id":          player_id,
+                "player_name":        pl.name if pl else None,
+                "national_team_name": pl.national_team_name if pl else None,
+                "position_slot":      slot_idx,
+                "is_captain":         player_id == captain_id,
+                "is_vice_captain":    player_id == vice_id,
+                "is_starting":        player_id in starting_ids,
+                "synced_round":       current_round,
+            })
+
+    if processed_user_ids:
+        db.query(FantasySquadPick).filter(
+            FantasySquadPick.fifa_user_id.in_(processed_user_ids)
+        ).delete(synchronize_session=False)
+    if rows:
+        db.bulk_insert_mappings(FantasySquadPick, rows)
+    db.commit()
+
+    return {"users": len(processed_user_ids), "picks": len(rows), "errors": errors}
