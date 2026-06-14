@@ -6,8 +6,10 @@ from ..database import get_db
 from ..config import settings
 from ..models.round_score import RoundScore
 from ..models.probability_snapshot import ProbabilitySnapshot
-from ..services.simulation import run_monte_carlo
-from ..services.fifa_api import fetch_standings, fetch_fixtures, fetch_rounds, fetch_gamebar, fetch_groups, fetch_scorers
+from ..services.simulation import run_monte_carlo, run_monte_carlo_live
+from ..models.fantasy_squad_pick import FantasySquadPick
+from ..models.fantasy_player import FantasyPlayer
+from ..services.fifa_api import fetch_standings, fetch_fixtures, fetch_rounds, fetch_gamebar, fetch_groups, fetch_scorers, normalise_team
 from ..services.sync import sync_league
 
 router = APIRouter(prefix="/api/league", tags=["league"])
@@ -138,23 +140,107 @@ def get_stats(db: Session = Depends(get_db)):
     }
 
 
+async def _get_played_teams_this_round() -> set[str]:
+    """Return set of normalised national team names that have completed a match in the active round."""
+    import httpx
+    from ..services.fifa_api import _headers
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get("https://play.fifa.com/json/fantasy/rounds.json",
+                                    headers=_headers(), timeout=8)
+        rounds_data = resp.json() if resp.status_code == 200 else []
+    except Exception:
+        return set()
+
+    if not isinstance(rounds_data, list):
+        return set()
+
+    # Find the active round: status "playing" first, else the last round with any complete match
+    current_round = None
+    for r in rounds_data:
+        if r.get("status") == "playing":
+            current_round = r
+            break
+    if current_round is None:
+        for r in reversed(rounds_data):
+            for t in (r.get("tournaments") or []):
+                if t.get("status") == "complete":
+                    current_round = r
+                    break
+            if current_round:
+                break
+
+    if not current_round:
+        return set()
+
+    # rounds.json structure: round -> tournaments[] (each tournament IS a match)
+    # Fields: homeSquadName, awaySquadName, status ("complete" / "scheduled")
+    played = set()
+    for t in (current_round.get("tournaments") or []):
+        if t.get("status") == "complete":
+            home = t.get("homeSquadName") or ""
+            away = t.get("awaySquadName") or ""
+            if home:
+                played.add(normalise_team(home))
+            if away:
+                played.add(normalise_team(away))
+    return played
+
+
 @router.get("/simulation")
 async def get_simulation(db: Session = Depends(get_db)):
-    latest = (
-        db.query(RoundScore.fifa_username, func.max(RoundScore.overall_points).label("points"))
-        .group_by(RoundScore.fifa_username)
-        .all()
-    )
-    if not latest:
+    import traceback
+    try:
         ranks = await fetch_standings(db)
         current_scores = {r["userName"]: r.get("overallPoints") or 0 for r in ranks}
-        rounds_played = 0
-    else:
-        current_scores = {r.fifa_username: r.points or 0 for r in latest}
+
         rounds_played = db.query(func.max(RoundScore.round_id)).scalar() or 0
 
-    rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
-    return run_monte_carlo(current_scores, rounds_remaining)
+        played_teams = await _get_played_teams_this_round()
+
+        if played_teams:
+            picks = (
+                db.query(FantasySquadPick)
+                .filter(FantasySquadPick.is_starting == True)
+                .all()
+            )
+            user_id_to_name = {r["userId"]: r["userName"] for r in ranks}
+
+            remaining_slots: dict[str, float] = {}
+            for pick in picks:
+                username = user_id_to_name.get(pick.fifa_user_id)
+                if not username:
+                    continue
+                team = pick.national_team_name or ""
+                if normalise_team(team) in played_teams:
+                    continue
+                slot_weight = 2.0 if pick.is_captain else 1.0
+                remaining_slots[username] = remaining_slots.get(username, 0.0) + slot_weight
+
+            future_rounds = max(0, TOTAL_ROUNDS - rounds_played - 1)
+            result = run_monte_carlo_live(current_scores, remaining_slots, future_rounds)
+            result["_debug"] = {"played_teams": sorted(played_teams), "remaining_slots": remaining_slots}
+            return result
+        else:
+            rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
+            result = run_monte_carlo(current_scores, rounds_remaining)
+            result["_debug"] = {"played_teams": [], "remaining_slots": {}}
+            return result
+    except Exception as e:
+        return {"_error": str(e), "_traceback": traceback.format_exc()[-800:]}
+
+
+@router.get("/simulation-debug")
+async def get_simulation_debug(db: Session = Depends(get_db)):
+    """Debug: show played_teams and pick team names to diagnose matching."""
+    played_teams = await _get_played_teams_this_round()
+    picks = db.query(FantasySquadPick).filter(FantasySquadPick.is_starting == True).all()
+    pick_teams = sorted(set(p.national_team_name for p in picks if p.national_team_name))
+    return {
+        "played_teams": sorted(played_teams),
+        "pick_team_names_in_db": pick_teams,
+        "normalised_pick_teams": sorted(set(normalise_team(t) for t in pick_teams)),
+    }
 
 
 @router.get("/status")
