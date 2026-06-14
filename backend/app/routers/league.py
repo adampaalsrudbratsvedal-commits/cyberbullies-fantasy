@@ -218,14 +218,10 @@ async def get_simulation(db: Session = Depends(get_db)):
                 remaining_slots[username] = remaining_slots.get(username, 0.0) + slot_weight
 
             future_rounds = max(0, TOTAL_ROUNDS - rounds_played - 1)
-            result = run_monte_carlo_live(current_scores, remaining_slots, future_rounds)
-            result["_debug"] = {"played_teams": sorted(played_teams), "remaining_slots": remaining_slots}
-            return result
+            return run_monte_carlo_live(current_scores, remaining_slots, future_rounds)
         else:
             rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
-            result = run_monte_carlo(current_scores, rounds_remaining)
-            result["_debug"] = {"played_teams": [], "remaining_slots": {}}
-            return result
+            return run_monte_carlo(current_scores, rounds_remaining)
     except Exception as e:
         return {"_error": str(e), "_traceback": traceback.format_exc()[-800:]}
 
