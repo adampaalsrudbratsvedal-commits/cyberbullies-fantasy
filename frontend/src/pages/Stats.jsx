@@ -105,6 +105,29 @@ function ProbRow({ name, prob, exp, color, max }) {
   )
 }
 
+function ChartTooltip({ active, payload, label, colors, players }) {
+  if (!active || !payload?.length) return null
+  const sorted = [...payload].sort((a, b) => b.value - a.value)
+  return (
+    <div style={{
+      background: TH.elev, border: `1px solid ${TH.border}`,
+      borderRadius: 8, padding: '8px 12px', fontSize: 12,
+    }}>
+      <div style={{ color: TH.muted, fontFamily: 'monospace', fontSize: 10, marginBottom: 6 }}>{label}</div>
+      {sorted.map((p) => {
+        const idx = players.indexOf(p.dataKey)
+        const color = colors[idx] || TH.muted
+        return (
+          <div key={p.dataKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, color, marginBottom: 2 }}>
+            <span>{p.dataKey}</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{p.value}%</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function ProbLineChart({ data, players, colors, height = 200 }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -125,18 +148,7 @@ function ProbLineChart({ data, players, colors, height = 200 }) {
           tickLine={false}
           axisLine={false}
         />
-        <Tooltip
-          contentStyle={{
-            background: TH.elev,
-            border: `1px solid ${TH.border}`,
-            borderRadius: 8,
-            color: TH.text,
-            fontSize: 12,
-          }}
-          labelStyle={{ color: TH.muted, fontFamily: 'JetBrains Mono, ui-monospace, monospace' }}
-          formatter={(v) => [`${v}%`]}
-          cursor={{ stroke: TH.border }}
-        />
+        <Tooltip content={<ChartTooltip colors={colors} players={players} />} cursor={{ stroke: TH.border }} />
         {players.map((name, i) => (
           <Line
             key={name}
@@ -380,8 +392,10 @@ function TopScorersSection({ scorers, loading, error }) {
     .slice(0, 5)
 
   const topAssists = [...rawList]
+    .filter((s) => (s.assists ?? 0) > 0)
     .sort((a, b) => (b.assists ?? 0) - (a.assists ?? 0) || (a.player?.name ?? '').localeCompare(b.player?.name ?? ''))
     .slice(0, 5)
+  const hasAssists = topAssists.length > 0
 
   return (
     <div
@@ -394,7 +408,7 @@ function TopScorersSection({ scorers, loading, error }) {
           Toppscorere
         </h2>
         <p className="mt-1 mb-4" style={{ fontSize: 12, color: TH.muted }}>
-          VM 2026 · Topp 5 mål og assist
+          VM 2026 · Topp 5 mål{hasAssists ? ' og assist' : ''}
         </p>
 
         {loading ? (
@@ -402,7 +416,7 @@ function TopScorersSection({ scorers, loading, error }) {
         ) : error ? (
           <div className="text-center py-8" style={{ color: TH.warn, fontSize: 13 }}>Kunne ikke hente toppscorere</div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 pb-2">
+          <div className={`grid gap-6 pb-2 ${hasAssists ? 'sm:grid-cols-2' : ''}`}>
             {/* Mål */}
             <div>
               <div
@@ -426,18 +440,16 @@ function TopScorersSection({ scorers, loading, error }) {
                 ))
               )}
             </div>
-            {/* Assist */}
-            <div>
-              <div
-                className="font-mono font-semibold uppercase mb-2"
-                style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.14em' }}
-              >
-                ASSIST
-              </div>
-              {topAssists.length === 0 ? (
-                <p style={{ fontSize: 12, color: TH.dim, padding: '12px 0' }}>Ingen assist registrert ennå</p>
-              ) : (
-                topAssists.map((s, i) => (
+            {/* Assist — kun vist om data finnes */}
+            {hasAssists && (
+              <div>
+                <div
+                  className="font-mono font-semibold uppercase mb-2"
+                  style={{ fontSize: 10, color: TH.dim, letterSpacing: '0.14em' }}
+                >
+                  ASSIST
+                </div>
+                {topAssists.map((s, i) => (
                   <ScorerRow
                     key={s.player?.id ?? i}
                     rank={i + 1}
@@ -446,9 +458,9 @@ function TopScorersSection({ scorers, loading, error }) {
                     value={s.assists ?? 0}
                     isTop={i === 0}
                   />
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -581,7 +593,10 @@ export default function Stats() {
   useEffect(() => {
     setSimLoading(true)
     getSimulation()
-      .then((r) => setSim(r.data))
+      .then((r) => {
+        if (r.data?._error) { setSimError(true); return }
+        setSim(r.data)
+      })
       .catch(() => setSimError(true))
       .finally(() => setSimLoading(false))
     getProbabilityHistory()
@@ -640,8 +655,8 @@ export default function Stats() {
             Beregner simuleringer…
           </div>
         ) : simError ? (
-          <div className="text-center py-16" style={{ color: TH.warn }}>
-            Kunne ikke hente simuleringsdata
+          <div className="text-center py-16" style={{ color: TH.muted, fontSize: 13 }}>
+            Poeng oppdateres — prøv igjen om litt.
           </div>
         ) : winEntries.length === 0 ? (
           <div className="text-center py-16" style={{ color: TH.dim }}>

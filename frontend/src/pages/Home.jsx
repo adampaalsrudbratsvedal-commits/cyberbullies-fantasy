@@ -13,7 +13,7 @@ import Pitch from '../components/Pitch'
 import SidePlayerCard from '../components/SidePlayerCard'
 import { TH } from '../lib/theme'
 
-const TOTAL_ROUNDS = 64
+const TOTAL_ROUNDS = 8
 const TOURNAMENT_START = new Date('2026-06-11T00:00:00')
 const TOURNAMENT_END   = new Date('2026-07-20T00:00:00')
 
@@ -151,11 +151,8 @@ export default function Home() {
                   Laster…
                 </div>
               ) : error ? (
-                <div
-                  className="text-center py-10"
-                  style={{ color: TH.warn }}
-                >
-                  Kunne ikke hente standings
+                <div className="text-center py-10" style={{ color: TH.muted, fontSize: 13 }}>
+                  Poeng oppdateres — prøv igjen om litt.
                 </div>
               ) : sorted.length === 0 ? (
                 <div className="text-center py-10" style={{ color: TH.dim }}>

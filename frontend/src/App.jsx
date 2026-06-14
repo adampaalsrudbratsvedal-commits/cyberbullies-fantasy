@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Component } from 'react'
 import { AuthProvider } from './AuthContext'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
@@ -10,6 +11,22 @@ import Kamper from './pages/Kamper'
 import VMBracket from './pages/VMBracket'
 import Squads from './pages/Squads'
 import KampDetalj from './pages/KampDetalj'
+import { TH } from './lib/theme'
+
+class PageBoundary extends Component {
+  constructor(props) { super(props); this.state = { crashed: false } }
+  static getDerivedStateFromError() { return { crashed: true } }
+  render() {
+    if (this.state.crashed) return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center">
+        <p style={{ color: TH.muted, fontSize: 14 }}>Poeng oppdateres — prøv igjen om litt.</p>
+      </div>
+    )
+    return this.props.children
+  }
+}
+
+const W = (Page) => <PageBoundary><Page /></PageBoundary>
 
 export default function App() {
   return (
@@ -19,15 +36,15 @@ export default function App() {
           <Navbar />
           <main>
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/stats" element={<Stats />} />
-              <Route path="/historikk" element={<History />} />
-              <Route path="/kamper" element={<Kamper />} />
-              <Route path="/regler" element={<Regler />} />
-              <Route path="/vm-bracket" element={<VMBracket />} />
-              <Route path="/lag" element={<Squads />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/kamper/:matchId" element={<KampDetalj />} />
+              <Route path="/" element={W(Home)} />
+              <Route path="/stats" element={W(Stats)} />
+              <Route path="/historikk" element={W(History)} />
+              <Route path="/kamper" element={W(Kamper)} />
+              <Route path="/regler" element={W(Regler)} />
+              <Route path="/vm-bracket" element={W(VMBracket)} />
+              <Route path="/lag" element={W(Squads)} />
+              <Route path="/admin" element={W(Admin)} />
+              <Route path="/kamper/:matchId" element={W(KampDetalj)} />
             </Routes>
           </main>
         </div>

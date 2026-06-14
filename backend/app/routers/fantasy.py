@@ -251,6 +251,48 @@ def debug_team_names(db: Session = Depends(get_db)):
     return sorted([n[0] for n in names])
 
 
+@router.get("/debug-raw-squad/{user_id}")
+async def debug_raw_squad(user_id: int, db: Session = Depends(get_db)):
+    """Show raw FIFA Fantasy API squad response + parsed starting_ids."""
+    data = await fetch_user_squad(user_id, db)
+    lineup = data.get("lineup") or {}
+    bench  = data.get("bench")  or {}
+    subs   = data.get("substitutions") or []
+    starting_ids = [pid for pos in lineup.values() for pid in (pos or [])]
+    bench_ids    = [pid for pos in bench.values()  for pid in (pos or [])]
+    return {
+        "raw_lineup": lineup,
+        "raw_bench":  bench,
+        "substitutions": subs,
+        "starting_ids": starting_ids,
+        "bench_ids":    bench_ids,
+        "all_keys": list(data.keys()),
+        "382_is_starting": 382 in starting_ids,
+        "863_is_starting": 863 in starting_ids,
+    }
+
+
+@router.get("/debug-user-picks/{username}")
+def debug_user_picks(username: str, db: Session = Depends(get_db)):
+    """Show all picks for a user — diagnose is_starting and national_team_name issues."""
+    picks = (
+        db.query(FantasySquadPick)
+        .filter(FantasySquadPick.fifa_username == username)
+        .order_by(FantasySquadPick.is_starting.desc(), FantasySquadPick.position_slot)
+        .all()
+    )
+    return [
+        {
+            "player_id": p.player_id,
+            "player_name": p.player_name,
+            "national_team_name": p.national_team_name,
+            "is_starting": p.is_starting,
+            "is_captain": p.is_captain,
+        }
+        for p in picks
+    ]
+
+
 # ─────────────────────────── SYNC ENDPOINTS ────────────────────────────────
 
 
@@ -312,6 +354,20 @@ async def sync_squads(db: Session = Depends(get_db)):
         bench_ids = []
         for pos_players in bench.values():
             bench_ids.extend(pos_players or [])
+
+        # Apply manual substitutions — the API may return the pre-sub lineup
+        # when called with a neutral session; substitutions[] records the changes.
+        for sub in (squad_data.get("substitutions") or []):
+            out_id = sub.get("out")
+            in_id  = sub.get("in")
+            if out_id and in_id and out_id in starting_ids and in_id not in starting_ids:
+                starting_ids.remove(out_id)
+                starting_ids.append(in_id)
+                # Keep bench consistent: swap in_id out, put out_id in
+                if in_id in bench_ids:
+                    bench_ids.remove(in_id)
+                if out_id not in bench_ids:
+                    bench_ids.append(out_id)
 
         all_ids = starting_ids + bench_ids
         if not all_ids:
