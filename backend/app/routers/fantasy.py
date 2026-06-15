@@ -303,61 +303,6 @@ async def sync_squads_cron(db: Session = Depends(get_db)):
     return await sync_squads(db)
 
 
-@router.post("/fix-squad-with-cookies")
-async def fix_squad_with_cookies(
-    fifa_user_id: int,
-    fifa_username: str,
-    cookie_string: str,
-    db: Session = Depends(get_db),
-):
-    """One-off: sync a single user's squad using their full browser cookie string."""
-
-    from ..services.fifa_api import fetch_user_squad
-    from ..models.fantasy_player import FantasyPlayer
-    from sqlalchemy import func as sqlfunc2
-
-    player_lookup = {p.id: p for p in db.query(FantasyPlayer).all()}
-    current_round = db.query(sqlfunc.max(RoundScore.round_id)).scalar() or 0
-
-    squad_data = await fetch_user_squad(fifa_user_id, db, user_sid=cookie_string)
-
-    lineup = squad_data.get("lineup") or {}
-    bench  = squad_data.get("bench")  or {}
-    captain_id = squad_data.get("captain")
-    vice_id    = squad_data.get("vice")
-
-    starting_ids = [pid for pos in lineup.values() for pid in (pos or [])]
-    bench_ids    = [pid for pos in bench.values()  for pid in (pos or [])]
-
-    for sub in (squad_data.get("substitutions") or []):
-        out_id, in_id = sub.get("out"), sub.get("in")
-        if out_id and in_id and out_id in starting_ids and in_id not in starting_ids:
-            starting_ids.remove(out_id)
-            starting_ids.append(in_id)
-            if in_id in bench_ids: bench_ids.remove(in_id)
-            if out_id not in bench_ids: bench_ids.append(out_id)
-
-    all_ids = starting_ids + bench_ids
-    rows = []
-    for slot, pid in enumerate(all_ids, 1):
-        pl = player_lookup.get(pid)
-        rows.append({
-            "fifa_user_id": fifa_user_id, "fifa_username": fifa_username,
-            "player_id": pid, "player_name": pl.name if pl else None,
-            "national_team_name": pl.national_team_name if pl else None,
-            "position_slot": slot, "is_captain": pid == captain_id,
-            "is_vice_captain": pid == vice_id, "is_starting": pid in starting_ids,
-            "synced_round": current_round,
-        })
-
-    db.query(FantasySquadPick).filter(FantasySquadPick.fifa_user_id == fifa_user_id).delete()
-    db.bulk_insert_mappings(FantasySquadPick, rows)
-    db.commit()
-
-    starters = [r["player_name"] for r in rows if r["is_starting"]]
-    bench_names = [r["player_name"] for r in rows if not r["is_starting"]]
-    return {"ok": True, "starters": starters, "bench": bench_names, "subs_applied": squad_data.get("substitutions", [])}
-
 
 @router.post("/sync-squads")
 async def sync_squads(db: Session = Depends(get_db)):

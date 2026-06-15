@@ -26,3 +26,4 @@ dist/
 .render/
 
 .vercel
+.env*
