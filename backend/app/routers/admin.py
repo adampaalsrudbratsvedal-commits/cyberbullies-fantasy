@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.user import User
-from ..models.fantasy import FantasySquadPick
+from ..models.fantasy_squad_pick import FantasySquadPick
 from ..services.sync import sync_league
 from .auth import get_current_user
 
@@ -64,7 +64,7 @@ class SetPicksBody(BaseModel):
 @router.post("/set-picks")
 def set_picks(body: SetPicksBody, db: Session = Depends(get_db), _: User = Depends(require_admin)):
     """Admin: manually set squad picks for a user (overwrites existing)."""
-    from ..models.fantasy import FantasyPlayer
+    from ..models.fantasy_player import FantasyPlayer
     player_lookup = {p.id: p for p in db.query(FantasyPlayer).all()}
 
     db.query(FantasySquadPick).filter(
