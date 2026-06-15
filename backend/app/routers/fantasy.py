@@ -575,6 +575,33 @@ async def debug_squad(user_id: int, db: Session = Depends(get_db)):
         return {"error": str(e), "traceback": traceback.format_exc()}
 
 
+@router.post("/fix-apb03-lineup")
+def fix_apb03_lineup(db: Session = Depends(get_db)):
+    """One-off: apply correct APB03 lineup (post-substitution). Remove after use."""
+    from ..models.fantasy_player import FantasyPlayer
+    player_lookup = {p.id: p for p in db.query(FantasyPlayer).all()}
+    db.query(FantasySquadPick).filter(
+        FantasySquadPick.fifa_username == "Apb03"
+    ).delete(synchronize_session=False)
+    starting = [477, 916, 542, 1709, 1088, 847, 939, 1092, 543, 468, 500]
+    bench    = [1428, 1135, 147, 863]
+    rows = []
+    for slot, (pid, is_s) in enumerate(
+        [(p, True) for p in starting] + [(p, False) for p in bench], start=1
+    ):
+        pl = player_lookup.get(pid)
+        rows.append(FantasySquadPick(
+            fifa_user_id=1290388, fifa_username="Apb03",
+            player_id=pid, player_name=pl.name if pl else None,
+            national_team_name=pl.national_team_name if pl else None,
+            position_slot=slot, is_captain=(pid == 1092),
+            is_vice_captain=(pid == 1088), is_starting=is_s, synced_round=1,
+        ))
+    db.bulk_save_objects(rows)
+    db.commit()
+    return {"ok": True, "inserted": len(rows)}
+
+
 @router.get("/db-stats")
 def db_stats(db: Session = Depends(get_db)):
     picks_with_team = db.query(sqlfunc.count(FantasySquadPick.id)).filter(
