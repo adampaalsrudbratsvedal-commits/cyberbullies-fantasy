@@ -575,6 +575,20 @@ async def debug_squad(user_id: int, db: Session = Depends(get_db)):
         return {"error": str(e), "traceback": traceback.format_exc()}
 
 
+@router.post("/set-apb03-sid")
+def set_apb03_sid(db: Session = Depends(get_db)):
+    """One-off: store APB03's FIFA session cookie for live squad sync. Remove after use."""
+    from ..models.user import User as AppUser
+    cookie = "OptanonAlertBoxClosed=2026-05-27T14:12:18.686Z; eupubconsent-v2=CQk3O7AQk3O7AAcABBENCgFgAAAAAAAAAChQAAAYwgLAA4AGaAZ8BHgCVQHbAQUAjSBIgCSgEowJkgUcAqkBWACuYFqwLeAXsAwEBiADGAAA.YAAAAAAAAAAA.IMhtR_G__bXlv-bb36btkeYxf9_hr7sQxBgbIsm4FzLvW7JwG32EbNEzatiYKmRIAu3TBIQNtHJjURUChKIgVrzDsaE2U4TtKJ-BkiHMZY2tQCFxum4tjeQCZ4ur_90d9mR-t7dr-2dzy27hnv3a9fuS1UJidKYetHfv8ZBOT-_IU9_x-_4v4_MbpEm8eS1v_tWtt43c64vv_dpuxt-Tyff7fv_f73_e7X__e__33_-qX3_r7____________f__________9_____4A; fs_fliu=true; X-SID=5954795a0e452d423cd37207_1781476986; bm_sz=6AE1167FDAEDACA5799D7FC71001C59C~YAAQL+EWAtd2grOeAQAAhcqnyABDtgPPgHcQJMPW3E4Z5GqvoohTiZLys4AAQD2Jdxa4XQW+mFXl4FPsF3tn50fgs7bwqkm4ZCeXpdre3+TUMpQ97iI1NXZ9SL6i7xAMbKLmAB/WZKuYMYU6urbTyu5pWxIl2J5GymC1jNw1tiFyegsc9dFm3XzGF0e6zJlPqiW7Z8SdT5W1Gvr09bS485c31dYZbSWSprHyuZztsUD/wAdUu0NLFv4nYQG7jbyc0+xWE1VhBaN1tiQlTJzYPnptv110DrI2/3OCV03JM5HPcYr+q1bxuv2Ak/RzTFK58qLgPpi6u4UMYfnulvns6UrvWHu7utOyNVLZkxYm3NyxKwFJihz12mwDlZVP83xTkmYjWgPcyYyvMLyrjNWhreIS59Vu3Vh1sesXo8KpaOYcad20NJ46Jeog4O2roGDoKx9j3E0OG/cyBvZutNZxYap54a56/Bg=~3556673~4339509; bm_sv=FAAECADC7DA70E45B0F0878F77F7F0E1~YAAQL+EWAul2grOeAQAAA8+nyABnWe3oftZLXbUyCx102bTxVMGNwLE4VNFoLktp4GCdZWdjUvjc2DIOG523FUzQZlvqbaD8xzIINm2laetnyM9bovrMwJyOQnWNRUFLt4yR6zJ2tvVaAZSmXZLqIWBPuoV8lQydl1AiHCnbKIavAUNDAYFLyKtd54LxpMVo1jdZ/CNIEFcBQ1lAYad/OULeE2S/D9dRuuABlPL43HHWfZX1zPj0eJim5D6ZT2et~1"
+    users = db.query(AppUser).all()
+    user = next((u for u in users if (u.fifa_username or "").lower() == "apb03"), None)
+    if not user:
+        return {"error": "Ingen bruker med fifa_username=apb03"}
+    user.fifa_sid = cookie
+    db.commit()
+    return {"ok": True, "username": user.username, "fifa_username": user.fifa_username}
+
+
 @router.get("/db-stats")
 def db_stats(db: Session = Depends(get_db)):
     picks_with_team = db.query(sqlfunc.count(FantasySquadPick.id)).filter(
