@@ -305,6 +305,43 @@ async def sync_squads_cron(db: Session = Depends(get_db)):
 
 
 
+@router.get("/fix-apb03")
+async def fix_apb03(token: str, db: Session = Depends(get_db)):
+    from ..config import settings as cfg
+    if token != cfg.fifa_sid:
+        raise HTTPException(status_code=403, detail="Bad token")
+
+    # Delete ALL picks stored under any user ID for Apb03
+    db.query(FantasySquadPick).filter(FantasySquadPick.fifa_username == "Apb03").delete()
+    db.commit()
+
+    # Re-insert correct picks (only under the real user ID 1290388)
+    starting_ids = [477, 916, 542, 1709, 1088, 847, 939, 1092, 543, 468, 500]
+    bench_ids    = [1428, 1135, 863, 147]
+    captain_id   = 1092
+    vice_id      = 1088
+
+    player_lookup = {p.id: p for p in db.query(FantasyPlayer).all()}
+    current_round = db.query(sqlfunc.max(RoundScore.round_id)).scalar() or 0
+
+    rows = []
+    for slot, pid in enumerate(starting_ids + bench_ids, 1):
+        pl = player_lookup.get(pid)
+        rows.append({
+            "fifa_user_id": 1290388, "fifa_username": "Apb03",
+            "player_id": pid, "player_name": pl.name if pl else None,
+            "national_team_name": pl.national_team_name if pl else None,
+            "position_slot": slot, "is_captain": pid == captain_id,
+            "is_vice_captain": pid == vice_id, "is_starting": pid in starting_ids,
+            "synced_round": current_round,
+        })
+
+    db.bulk_insert_mappings(FantasySquadPick, rows)
+    db.commit()
+    return {"ok": True, "starters": [r["player_name"] for r in rows if r["is_starting"]],
+            "bench": [r["player_name"] for r in rows if not r["is_starting"]]}
+
+
 @router.post("/sync-squads")
 async def sync_squads(db: Session = Depends(get_db)):
     """
