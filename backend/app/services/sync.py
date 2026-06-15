@@ -117,6 +117,11 @@ async def _sync_squads_inner(db: Session, ranks: list) -> dict:
 
     results = await asyncio.gather(*[fetch_one(r) for r in ranks])
 
+    # Find users who already have picks in the DB (by user_id)
+    existing_user_ids: set[int] = set(
+        row[0] for row in db.query(FantasySquadPick.fifa_user_id).distinct().all()
+    )
+
     errors: list[str] = []
     rows: list[dict] = []
     processed_user_ids: list[int] = []
@@ -128,6 +133,16 @@ async def _sync_squads_inner(db: Session, ranks: list) -> dict:
 
         if "_error" in squad_data:
             errors.append(f"{username}: {squad_data['_error']}")
+            continue
+
+        has_own_sid = (username or "").lower() in user_sids
+        has_subs = bool(squad_data.get("substitutions"))
+
+        # If we have no authenticated session AND the user already has picks,
+        # skip overwriting — a neutral session can't see mid-round substitutions
+        # and would overwrite a manually corrected lineup with stale data.
+        if not has_own_sid and not has_subs and user_id in existing_user_ids:
+            errors.append(f"{username}: skipped (no SID, existing picks preserved)")
             continue
 
         lineup = squad_data.get("lineup") or {}
