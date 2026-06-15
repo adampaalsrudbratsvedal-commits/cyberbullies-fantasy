@@ -583,7 +583,11 @@ def set_apb03_sid(db: Session = Depends(get_db)):
     users = db.query(AppUser).all()
     user = next((u for u in users if (u.fifa_username or "").lower() == "apb03"), None)
     if not user:
-        return {"error": "Ingen bruker med fifa_username=apb03"}
+        # Fall back: use admin user
+        user = next((u for u in users if u.is_admin), None)
+    if not user:
+        return {"error": "Ingen bruker funnet", "users": [u.username for u in users]}
+    user.fifa_username = "Apb03"
     user.fifa_sid = cookie
     db.commit()
     return {"ok": True, "username": user.username, "fifa_username": user.fifa_username}
