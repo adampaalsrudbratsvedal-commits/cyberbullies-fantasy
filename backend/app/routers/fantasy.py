@@ -575,6 +575,25 @@ async def debug_squad(user_id: int, db: Session = Depends(get_db)):
         return {"error": str(e), "traceback": traceback.format_exc()}
 
 
+@router.post("/fix-apb03-v3")
+def fix_apb03_v3(db: Session = Depends(get_db)):
+    from ..models.fantasy_player import FantasyPlayer
+    pl = {p.id: p for p in db.query(FantasyPlayer).all()}
+    db.query(FantasySquadPick).filter(FantasySquadPick.fifa_username == "Apb03").delete(synchronize_session=False)
+    starting = [477, 916, 542, 1709, 1088, 847, 939, 1092, 543, 468, 500]
+    bench    = [1428, 1135, 147, 863]
+    rows = [FantasySquadPick(
+        fifa_user_id=1290388, fifa_username="Apb03", player_id=pid,
+        player_name=pl[pid].name if pid in pl else None,
+        national_team_name=pl[pid].national_team_name if pid in pl else None,
+        position_slot=i+1, is_captain=(pid==1092), is_vice_captain=(pid==1088),
+        is_starting=is_s, synced_round=1,
+    ) for i, (pid, is_s) in enumerate([(p,True) for p in starting]+[(p,False) for p in bench])]
+    db.bulk_save_objects(rows)
+    db.commit()
+    return {"ok": True, "inserted": len(rows)}
+
+
 @router.get("/db-stats")
 def db_stats(db: Session = Depends(get_db)):
     picks_with_team = db.query(sqlfunc.count(FantasySquadPick.id)).filter(
