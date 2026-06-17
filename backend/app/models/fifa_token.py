@@ -10,5 +10,6 @@ class FifaToken(Base):
     access_token = Column(Text)
     refresh_token = Column(Text)
     fp_user = Column(Text)
+    x_sid = Column(String, nullable=True)
     expires_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

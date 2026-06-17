@@ -35,6 +35,8 @@ class TokenManager:
             except Exception:
                 pass
 
+    _x_sid_db: str = ""
+
     def _load_db(self, db) -> bool:
         row = db.query(FifaToken).first()
         if row and row.fp_user:
@@ -42,6 +44,7 @@ class TokenManager:
             self._refresh_token = row.refresh_token or settings.fifa_refresh_token
             self._fp_user = row.fp_user
             self._expires_at = row.expires_at
+            self._x_sid_db = row.x_sid or ""
             return True
         return False
 
@@ -54,6 +57,8 @@ class TokenManager:
         row.refresh_token = self._refresh_token
         row.fp_user = self._fp_user
         row.expires_at = self._expires_at
+        if self._x_sid_db:
+            row.x_sid = self._x_sid_db
         db.commit()
 
     def _is_expired(self) -> bool:
@@ -62,7 +67,8 @@ class TokenManager:
         return datetime.utcnow() >= self._expires_at - timedelta(minutes=5)
 
     def get_cookies(self) -> str:
-        return f"X-SID={settings.fifa_sid}; fp.user={self._fp_user}"
+        sid = self._x_sid_db or settings.fifa_sid
+        return f"X-SID={sid}; fp.user={self._fp_user}"
 
     async def refresh(self, db=None) -> bool:
         if not self._refresh_token:

@@ -575,6 +575,49 @@ async def debug_squad(user_id: int, db: Session = Depends(get_db)):
         return {"error": str(e), "traceback": traceback.format_exc()}
 
 
+@router.post("/update-fifa-session")
+def update_fifa_session(db: Session = Depends(get_db)):
+    """One-off: update FIFA session tokens from fresh browser cookies. Remove after use."""
+    import urllib.parse, json
+    from ..models.fifa_token import FifaToken
+    from ..services.token_manager import token_manager
+
+    new_x_sid = "a680856c8a191967ca1f806f_1781739007"
+    new_fp_user = "%7B%22ssoId%22%3A%2221a15ff3-e2bb-4448-99fe-0ac145f0c252%22%2C%22envId%22%3A%223f85e2e1-0232-4f84-9da8-bba9279f1a23%22%2C%22firstName%22%3A%22Adam%22%2C%22userName%22%3A%22adam.paalsrud.bratsvedal%40gmail.com%22%2C%22email%22%3A%22adam.paalsrud.bratsvedal%40gmail.com%22%2C%22dateOfBirth%22%3A%222003-12-16%22%2C%22countryOfResidence%22%3A%22NOR%22%2C%22accessToken%22%3A%22eyJhbGciOiJSUzI1NiIsImtpZCI6ImRlZmF1bHQifQ.eyJjbGllbnRfaWQiOiIzNTA3MjU5OC1mYzIwLTQxNDItYTQ2OS0xYjk0MGRiNDdlNmYiLCJpc3MiOiJodHRwczovL2F1dGgucGluZ29uZS5ldS8zZjg1ZTJlMS0wMjMyLTRmODQtOWRhOC1iYmE5Mjc5ZjFhMjMvYXMiLCJqdGkiOiIwY2VmZDBlOC04Y2Q0LTRlYWQtYTZlYS05NDk0YzM2ZWJiYWUiLCJpYXQiOjE3ODE3Mzg5NzIsImV4cCI6MTc4MTc0MjU3MiwiYXVkIjpbImh0dHBzOi8vYXBpLnBpbmdvbmUuZXUiXSwic2NvcGUiOiJhZGRyZXNzIHBob25lIG9wZW5pZCBwcm9maWxlIHAxOnVwZGF0ZTp1c2VyOnNhZmUtb25seSBlbWFpbCIsInN1YiI6IjIxYTE1ZmYzLWUyYmItNDQ0OC05OWZlLTBhYzE0NWYwYzI1MiIsInNpZCI6ImY5ZDdmOWI3LTAzYmMtNDA5YS1hOGI2LTdmNDBhMjNhOTk0ZSIsImF1dGhfdGltZSI6MTc4MTczODk3MSwiYWNyIjoiNzQ2NWEwMzgzNWE4ODllM2M4ZWVlYzMwMzFlNTVjZDciLCJlbnYiOiIzZjg1ZTJlMS0wMjMyLTRmODQtOWRhOC1iYmE5Mjc5ZjFhMjMiLCJvcmciOiI1Nzk1ODFhYy1jZWZjLTQzMjUtYmU1Zi1iYzA4NWY0MDAwMGUiLCJwMS5yaWQiOiJmMzU1M2VjZS1mZGFlLTRlNWMtOTE3Ny1kZjdkODgxMWZkMDIifQ.TXGpGgQWDPHiKSwc8SYpenbaQFF5GZEXCTqq-G_4mCWH1fXcQHdAwFWl_r5JsHXR7Lk2yXhnPX5WgZtdki_Guz137b5pJTZM9dYRyDCd-vtIp1MoMEgD9QnxRjw4nyRMzG2voxdshYyucpfOMrp_r69wpKiwGLT04k6J_CLeZTd93AMJ9173G3W3bmPrzyI4uP8McDNdiPTXIeIvDUKNCoWTolJKcfX0HoJfm9A-Q1L6FxhmEvp5I-bsfrZqNlV7netafjON4Vc-W3xLnwSWLH_n1rmo39H89LGTdVA313LAEWtxSWO_qFhWvXxnBpwMdOBYNCioms8YvC5TZZtSOw%22%2C%22refreshToken%22%3A%22eyJhbGciOiJSUzI1NiIsImtpZCI6ImRlZmF1bHQifQ.eyJzdWIiOiIyMWExNWZmMy1lMmJiLTQ0NDgtOTlmZS0wYWMxNDVmMGMyNTIiLCJqdGkiOiIwNjE1MGYxYS0zZTIzLTQ5MDUtOGZlNC1jYmQ3ZGViNTY1MmEiLCJleHAiOjE3ODQzMzA5NzIsInNpZCI6ImY5ZDdmOWI3LTAzYmMtNDA5YS1hOGI2LTdmNDBhMjNhOTk0ZSIsInNjb3BlIjoiYWRkcmVzcyBwaG9uZSBvcGVuaWQgcHJvZmlsZSBwMTp1cGRhdGU6dXNlcjpzYWZlLW9ubHkgZW1haWwiLCJhdXRoX3RpbWUiOjE3ODE3Mzg5NzEsImFjciI6Ijc0NjVhMDM4MzVhODg5ZTNjOGVlZWMzMDMxZTU1Y2Q3IiwiYW1yIjpbInB3ZCJdLCJpc3MiOiJodHRwczovL2F1dGgucGluZ29uZS5ldS8zZjg1ZTJlMS0wMjMyLTRmODQtOWRhOC1iYmE5Mjc5ZjFhMjMvYXMiLCJkYXZpbmNpX2lkX3Rva2VuX2F0dHJpYnV0ZXMiOiJ7XCJzdWJcIjpcIjIxYTE1ZmYzLWUyYmItNDQ0OC05OWZlLTBhYzE0NWYwYzI1MlwifSJ9.MRxb22i3cXgkDkyqmdCzfDja50u9qhr3fKDv6O8-xLAztQIMT5sdU1KOVB2gbKmYgc6RjSoevVBv5-uBiaWT8Wa6DbXzAHRO1pV5cdkeD2oZKeWrEOsy7QlMaovByD-BvoOPa_mb7AZRHBfiqhqL05bFsYJ-iQ8ompobw_cx3zHy-f2WKnDuEFcT1OomMs04GXcaLORNDAPLaWhhdPDR0mu2A9jwnvbccL1bp5EL3czIPNJb0BJrGyKzGOd05Lm_stDAb-2lbP6tkkHw5h_VufBvCHUT2qpzJiyfnyQuBMmtNWfw7Z5SAQGs0zb9qxY0z7kdiq4dwS_8O0egDWwvCg%22%2C%22expires%22%3A%222026-06-18T00%3A29%3A32.000Z%22%2C%22expIn%22%3A3600%2C%22expSeconds%22%3A1781742572%2C%22partnerOptIn%22%3Afalse%2C%22fifaOptIn%22%3Afalse%2C%22fifaNewsLetters%22%3A%7B%22newReleases%22%3Afalse%2C%22thisMonthOnFifaPlus%22%3Afalse%2C%22theBeautifulGame%22%3Afalse%2C%22eventsAndTournaments%22%3Afalse%2C%22playZone%22%3Afalse%2C%22fifaStore%22%3Afalse%2C%22fifaPlusCollect%22%3Afalse%7D%2C%22preferredCommunicationLanguage%22%3A%22en-GB%22%2C%22rewardsOptIn%22%3Afalse%7D"
+
+    fp_data = json.loads(urllib.parse.unquote(new_fp_user))
+    access_token = fp_data.get("accessToken", "")
+    refresh_token = fp_data.get("refreshToken", "")
+    expires_str = fp_data.get("expires", "")
+
+    from datetime import datetime
+    expires_at = None
+    if expires_str:
+        try:
+            expires_at = datetime.fromisoformat(expires_str.replace("Z", ""))
+        except Exception:
+            pass
+
+    row = db.query(FifaToken).first()
+    if not row:
+        row = FifaToken()
+        db.add(row)
+    row.access_token = access_token
+    row.refresh_token = refresh_token
+    row.fp_user = new_fp_user
+    row.x_sid = new_x_sid
+    row.expires_at = expires_at
+    db.commit()
+
+    token_manager._access_token = access_token
+    token_manager._refresh_token = refresh_token
+    token_manager._fp_user = new_fp_user
+    token_manager._x_sid_db = new_x_sid
+    token_manager._expires_at = expires_at
+
+    return {"ok": True, "x_sid": new_x_sid, "expires": expires_str}
+
+
 @router.get("/db-stats")
 def db_stats(db: Session = Depends(get_db)):
     picks_with_team = db.query(sqlfunc.count(FantasySquadPick.id)).filter(
