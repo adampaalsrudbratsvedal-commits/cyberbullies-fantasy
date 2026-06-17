@@ -39,7 +39,6 @@ async def sync_cron_endpoint(db: Session = Depends(get_db)):
 
 @router.get("/standings")
 async def get_standings(db: Session = Depends(get_db)):
-    import traceback
     try:
         ranks = await fetch_standings(db)
         # Auto-save round scores whenever standings are fetched
@@ -71,8 +70,33 @@ async def get_standings(db: Session = Depends(get_db)):
         except Exception:
             pass  # Don't break standings if save fails
         return ranks
-    except Exception as e:
-        return {"error": str(e), "traceback": traceback.format_exc()}
+    except Exception:
+        # FIFA API unavailable — fall back to last stored round scores from DB
+        from sqlalchemy import func as sqlfunc
+        latest_round = db.query(sqlfunc.max(RoundScore.round_id)).scalar()
+        if latest_round is None:
+            return []
+        rows = (
+            db.query(RoundScore)
+            .filter_by(round_id=latest_round)
+            .order_by(RoundScore.overall_rank)
+            .all()
+        )
+        return [
+            {
+                "userId":        r.fifa_user_id,
+                "userName":      r.fifa_username,
+                "roundId":       r.round_id,
+                "roundPoints":   r.round_points,
+                "overallPoints": r.overall_points,
+                "overallRank":   r.overall_rank,
+                "roundRank":     r.round_rank,
+                "leagueId":      None,
+                "level":         0,
+                "avatar":        "https://play.fifa.com/media/image/gamezone/avatars/WC_2026/0.svg",
+            }
+            for r in rows
+        ]
 
 
 @router.get("/history")
