@@ -53,7 +53,7 @@ async def sync_league(db: Session) -> dict:
     snapshot_saved = False
     if current_scores:
         rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
-        sim = run_monte_carlo(current_scores, rounds_remaining)
+        sim = run_monte_carlo(current_scores, rounds_remaining, n=100_000)
 
         # Delete existing snapshot for this round and replace
         db.query(ProbabilitySnapshot).filter_by(round_id=rounds_played).delete()
