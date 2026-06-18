@@ -37,14 +37,42 @@ async def sync_cron_endpoint(db: Session = Depends(get_db)):
         return {"error": str(e), "traceback": traceback.format_exc()}
 
 
+def _standings_from_db(db: Session) -> list[dict]:
+    """Build standings from stored RoundScore rows — always available as fallback."""
+    latest_round = db.query(func.max(RoundScore.round_id)).scalar()
+    if latest_round is None:
+        return []
+    rows = (
+        db.query(RoundScore)
+        .filter_by(round_id=latest_round)
+        .order_by(RoundScore.overall_rank)
+        .all()
+    )
+    return [
+        {
+            "userId":        r.fifa_user_id,
+            "userName":      r.fifa_username,
+            "roundId":       r.round_id,
+            "roundPoints":   r.round_points,
+            "overallPoints": r.overall_points,
+            "overallRank":   r.overall_rank,
+            "roundRank":     r.round_rank,
+            "leagueId":      None,
+            "level":         0,
+            "avatar":        "https://play.fifa.com/media/image/gamezone/avatars/WC_2026/0.svg",
+        }
+        for r in rows
+    ]
+
+
 @router.get("/standings")
 async def get_standings(db: Session = Depends(get_db)):
     try:
         ranks = await fetch_standings(db)
-        # Auto-save round scores whenever standings are fetched
+        # Auto-save round scores whenever FIFA returns real data
         try:
             for rank in ranks:
-                if rank.get("roundId") is None:
+                if rank.get("roundId") is None or rank.get("overallPoints") is None:
                     continue
                 existing = (
                     db.query(RoundScore)
@@ -68,38 +96,14 @@ async def get_standings(db: Session = Depends(get_db)):
                     ))
             db.commit()
         except Exception:
-            pass  # Don't break standings if save fails
-        # If FIFA returned data but all points are null (between-round transition), fall back to DB
+            pass
+        # If FIFA returned data but all points are null, use DB instead
         if ranks and all(r.get("overallPoints") is None for r in ranks):
-            raise ValueError("FIFA API returned null points — falling back to DB")
+            return _standings_from_db(db)
         return ranks
     except Exception:
-        # FIFA API unavailable or null points — fall back to last stored round scores from DB
-        from sqlalchemy import func as sqlfunc
-        latest_round = db.query(sqlfunc.max(RoundScore.round_id)).scalar()
-        if latest_round is None:
-            return []
-        rows = (
-            db.query(RoundScore)
-            .filter_by(round_id=latest_round)
-            .order_by(RoundScore.overall_rank)
-            .all()
-        )
-        return [
-            {
-                "userId":        r.fifa_user_id,
-                "userName":      r.fifa_username,
-                "roundId":       r.round_id,
-                "roundPoints":   r.round_points,
-                "overallPoints": r.overall_points,
-                "overallRank":   r.overall_rank,
-                "roundRank":     r.round_rank,
-                "leagueId":      None,
-                "level":         0,
-                "avatar":        "https://play.fifa.com/media/image/gamezone/avatars/WC_2026/0.svg",
-            }
-            for r in rows
-        ]
+        # FIFA API unavailable — always fall back to last saved DB data
+        return _standings_from_db(db)
 
 
 @router.get("/history")
@@ -237,21 +241,28 @@ def _save_snapshot(db: Session, rounds_played: int, result: dict, lock: bool) ->
         pass
 
 
+def _scores_from_db(db: Session) -> dict[str, float]:
+    """Read latest overall scores from DB — always available as fallback."""
+    latest_round = db.query(func.max(RoundScore.round_id)).scalar()
+    if not latest_round:
+        return {}
+    rows = db.query(RoundScore).filter_by(round_id=latest_round).all()
+    return {r.fifa_username: r.overall_points or 0 for r in rows}
+
+
 @router.get("/simulation")
 async def get_simulation(db: Session = Depends(get_db)):
     import traceback
     try:
-        ranks = await fetch_standings(db)
-        # Fall back to DB scores if FIFA returns null points (between-round transition)
-        if ranks and all(r.get("overallPoints") is None for r in ranks):
-            latest_round = db.query(func.max(RoundScore.round_id)).scalar()
-            if latest_round:
-                db_rows = db.query(RoundScore).filter_by(round_id=latest_round).all()
-                current_scores = {r.fifa_username: r.overall_points or 0 for r in db_rows}
-            else:
-                current_scores = {r["userName"]: 0 for r in ranks}
-        else:
+        try:
+            ranks = await fetch_standings(db)
+            if ranks and all(r.get("overallPoints") is None for r in ranks):
+                raise ValueError("null points")
             current_scores = {r["userName"]: r.get("overallPoints") or 0 for r in ranks}
+        except Exception:
+            # FIFA API down or null — use last saved scores from DB
+            ranks = _standings_from_db(db)
+            current_scores = _scores_from_db(db)
 
         rounds_played = db.query(func.max(RoundScore.round_id)).scalar() or 0
 
