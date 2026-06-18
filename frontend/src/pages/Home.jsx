@@ -222,7 +222,7 @@ export default function Home() {
                           color: isRoundWinner ? TH.info : TH.muted,
                         }}
                       >
-                        {p.roundPoints != null ? `+${p.roundPoints}` : (
+                        {p.roundPoints != null ? p.roundPoints : (
                           <span style={{ color: TH.dim }}>—</span>
                         )}
                       </span>
