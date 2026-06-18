@@ -23,44 +23,63 @@ async def _sync_squads_inner(db: Session, ranks: list[dict], current_round: int)
         except Exception:
             continue
 
-        picks_raw = squad_data.get("picks") or squad_data.get("squad") or []
-        if not picks_raw:
-            continue
+        # API returns lineup/bench as {position: [player_ids]} dicts
+        lineup = squad_data.get("lineup") or {}
+        bench  = squad_data.get("bench")  or {}
+        captain_id = squad_data.get("captain")
+        vice_id    = squad_data.get("vice")
 
-        # Apply mid-round substitutions if present
+        starting_ids = [pid for ids in lineup.values() for pid in (ids or [])]
+        bench_ids    = [pid for ids in bench.values()  for pid in (ids or [])]
+
+        # Flat picks list fallback (older API shape)
+        if not starting_ids and not bench_ids:
+            picks_raw = squad_data.get("picks") or squad_data.get("squad") or []
+            for pick in picks_raw:
+                pid = pick.get("playerId") or pick.get("id")
+                if not pid:
+                    continue
+                if pick.get("isStarting") if pick.get("isStarting") is not None else pick.get("starting", True):
+                    starting_ids.append(pid)
+                else:
+                    bench_ids.append(pid)
+            if not starting_ids and not bench_ids:
+                continue
+
+        # Apply mid-round substitutions (playerIn replaces playerOut)
         subs = squad_data.get("substitutions") or []
-        sub_map: dict[int, int] = {}  # playerIn -> playerOut
+        subbed_out: set[int] = set()
+        subbed_in:  set[int] = set()
         for sub in subs:
             player_in  = sub.get("playerIn")  or sub.get("playerId")
             player_out = sub.get("playerOut") or sub.get("replacedId")
             if player_in and player_out:
-                sub_map[player_in] = player_out
+                subbed_out.add(player_out)
+                subbed_in.add(player_in)
 
         db.query(FantasySquadPick).filter(
             FantasySquadPick.fifa_user_id == user_id
         ).delete(synchronize_session=False)
 
         rows = []
-        for slot_idx, pick in enumerate(picks_raw, start=1):
-            player_id  = pick.get("playerId") or pick.get("id")
-            is_starting = pick.get("isStarting") if pick.get("isStarting") is not None else pick.get("starting", True)
-            is_captain  = pick.get("isCaptain", False)
-            is_vice     = pick.get("isViceCaptain", False)
-
-            # Override starting status based on substitutions
-            if player_id in sub_map:
-                is_starting = False  # subbed off → bench
+        all_ids = [(pid, True) for pid in starting_ids] + [(pid, False) for pid in bench_ids]
+        for slot_idx, (player_id, is_starting) in enumerate(all_ids, start=1):
+            # Substitutions override starting status
+            if player_id in subbed_out:
+                is_starting = False
+            elif player_id in subbed_in:
+                is_starting = True
 
             pl = player_lookup.get(player_id)
             rows.append(FantasySquadPick(
                 fifa_user_id=user_id,
                 fifa_username=username,
                 player_id=player_id,
-                player_name=pl.name if pl else pick.get("name"),
-                national_team_name=pl.national_team_name if pl else pick.get("nationalTeam"),
+                player_name=pl.name if pl else None,
+                national_team_name=pl.national_team_name if pl else None,
                 position_slot=slot_idx,
-                is_captain=is_captain,
-                is_vice_captain=is_vice,
+                is_captain=(player_id == captain_id),
+                is_vice_captain=(player_id == vice_id),
                 is_starting=bool(is_starting),
                 synced_round=current_round,
             ))
