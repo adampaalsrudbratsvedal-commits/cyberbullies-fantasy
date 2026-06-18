@@ -247,18 +247,20 @@ async def get_simulation(db: Session = Depends(get_db)):
         else:
             rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
             result = run_monte_carlo(current_scores, rounds_remaining)
-            # Save as snapshot so history chart matches exactly
+            # Save as snapshot — but never overwrite a round that's already been superseded
             try:
-                db.query(ProbabilitySnapshot).filter_by(round_id=rounds_played).delete()
-                for username, probs in result.items():
-                    db.add(ProbabilitySnapshot(
-                        round_id=rounds_played,
-                        fifa_username=username,
-                        win_probability=probs["win_probability"],
-                        last_probability=probs["last_probability"],
-                        expected_final=probs["expected_final"],
-                    ))
-                db.commit()
+                latest_snapshot_round = db.query(func.max(ProbabilitySnapshot.round_id)).scalar() or 0
+                if rounds_played >= latest_snapshot_round:
+                    db.query(ProbabilitySnapshot).filter_by(round_id=rounds_played).delete()
+                    for username, probs in result.items():
+                        db.add(ProbabilitySnapshot(
+                            round_id=rounds_played,
+                            fifa_username=username,
+                            win_probability=probs["win_probability"],
+                            last_probability=probs["last_probability"],
+                            expected_final=probs["expected_final"],
+                        ))
+                    db.commit()
             except Exception:
                 pass
             return result
