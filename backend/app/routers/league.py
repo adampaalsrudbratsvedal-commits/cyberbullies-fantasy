@@ -211,6 +211,29 @@ async def _get_played_teams_this_round() -> set[str]:
     return played
 
 
+def _save_snapshot(db: Session, rounds_played: int, result: dict, lock: bool) -> None:
+    """Save simulation result as a probability snapshot.
+    lock=True: only overwrite if rounds_played >= existing snapshot round (completed round).
+    lock=False: always overwrite current round's snapshot (live/mid-round update).
+    """
+    try:
+        latest_snapshot_round = db.query(func.max(ProbabilitySnapshot.round_id)).scalar() or 0
+        if lock and rounds_played < latest_snapshot_round:
+            return  # Never overwrite a snapshot from a more-recent completed round
+        db.query(ProbabilitySnapshot).filter_by(round_id=rounds_played).delete()
+        for username, probs in result.items():
+            db.add(ProbabilitySnapshot(
+                round_id=rounds_played,
+                fifa_username=username,
+                win_probability=probs["win_probability"],
+                last_probability=probs["last_probability"],
+                expected_final=probs["expected_final"],
+            ))
+        db.commit()
+    except Exception:
+        pass
+
+
 @router.get("/simulation")
 async def get_simulation(db: Session = Depends(get_db)):
     import traceback
@@ -244,27 +267,16 @@ async def get_simulation(db: Session = Depends(get_db)):
 
             if remaining_slots:
                 future_rounds = max(0, TOTAL_ROUNDS - rounds_played - 1)
-                return run_monte_carlo_live(current_scores, remaining_slots, future_rounds)
-            # else: all teams played → fall through to between-rounds below
+                result = run_monte_carlo_live(current_scores, remaining_slots, future_rounds)
+                # Save live snapshot for current round (overwritable until round completes)
+                _save_snapshot(db, rounds_played, result, lock=False)
+                return result
+            # else: all teams played → round complete, fall through
 
-        # Between rounds (or round just completed): run standard simulation and save snapshot
+        # Between rounds or round just completed: standard simulation, lock snapshot
         rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
         result = run_monte_carlo(current_scores, rounds_remaining)
-        try:
-            latest_snapshot_round = db.query(func.max(ProbabilitySnapshot.round_id)).scalar() or 0
-            if rounds_played >= latest_snapshot_round:
-                db.query(ProbabilitySnapshot).filter_by(round_id=rounds_played).delete()
-                for username, probs in result.items():
-                    db.add(ProbabilitySnapshot(
-                        round_id=rounds_played,
-                        fifa_username=username,
-                        win_probability=probs["win_probability"],
-                        last_probability=probs["last_probability"],
-                        expected_final=probs["expected_final"],
-                    ))
-                db.commit()
-        except Exception:
-            pass
+        _save_snapshot(db, rounds_played, result, lock=True)
         return result
     except Exception as e:
         return {"_error": str(e), "_traceback": traceback.format_exc()[-800:]}
