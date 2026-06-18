@@ -242,32 +242,30 @@ async def get_simulation(db: Session = Depends(get_db)):
                 slot_weight = 2.0 if pick.is_captain else 1.0
                 remaining_slots[username] = remaining_slots.get(username, 0.0) + slot_weight
 
-            # If all teams have played (round complete), treat as between-rounds
-            if not remaining_slots:
-                played_teams = set()  # fall through to between-rounds branch
-            else:
+            if remaining_slots:
                 future_rounds = max(0, TOTAL_ROUNDS - rounds_played - 1)
                 return run_monte_carlo_live(current_scores, remaining_slots, future_rounds)
-        else:
-            rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
-            result = run_monte_carlo(current_scores, rounds_remaining)
-            # Save as snapshot — but never overwrite a round that's already been superseded
-            try:
-                latest_snapshot_round = db.query(func.max(ProbabilitySnapshot.round_id)).scalar() or 0
-                if rounds_played >= latest_snapshot_round:
-                    db.query(ProbabilitySnapshot).filter_by(round_id=rounds_played).delete()
-                    for username, probs in result.items():
-                        db.add(ProbabilitySnapshot(
-                            round_id=rounds_played,
-                            fifa_username=username,
-                            win_probability=probs["win_probability"],
-                            last_probability=probs["last_probability"],
-                            expected_final=probs["expected_final"],
-                        ))
-                    db.commit()
-            except Exception:
-                pass
-            return result
+            # else: all teams played → fall through to between-rounds below
+
+        # Between rounds (or round just completed): run standard simulation and save snapshot
+        rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
+        result = run_monte_carlo(current_scores, rounds_remaining)
+        try:
+            latest_snapshot_round = db.query(func.max(ProbabilitySnapshot.round_id)).scalar() or 0
+            if rounds_played >= latest_snapshot_round:
+                db.query(ProbabilitySnapshot).filter_by(round_id=rounds_played).delete()
+                for username, probs in result.items():
+                    db.add(ProbabilitySnapshot(
+                        round_id=rounds_played,
+                        fifa_username=username,
+                        win_probability=probs["win_probability"],
+                        last_probability=probs["last_probability"],
+                        expected_final=probs["expected_final"],
+                    ))
+                db.commit()
+        except Exception:
+            pass
+        return result
     except Exception as e:
         return {"_error": str(e), "_traceback": traceback.format_exc()[-800:]}
 
