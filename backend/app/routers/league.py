@@ -223,7 +223,7 @@ async def get_simulation(db: Session = Depends(get_db)):
         played_teams = await _get_played_teams_this_round()
 
         if played_teams:
-            # Mid-round: run live simulation with remaining slots
+            # Mid-round: compute remaining slots per user
             picks = (
                 db.query(FantasySquadPick)
                 .filter(FantasySquadPick.is_starting == True)
@@ -242,8 +242,12 @@ async def get_simulation(db: Session = Depends(get_db)):
                 slot_weight = 2.0 if pick.is_captain else 1.0
                 remaining_slots[username] = remaining_slots.get(username, 0.0) + slot_weight
 
-            future_rounds = max(0, TOTAL_ROUNDS - rounds_played - 1)
-            return run_monte_carlo_live(current_scores, remaining_slots, future_rounds)
+            # If all teams have played (round complete), treat as between-rounds
+            if not remaining_slots:
+                played_teams = set()  # fall through to between-rounds branch
+            else:
+                future_rounds = max(0, TOTAL_ROUNDS - rounds_played - 1)
+                return run_monte_carlo_live(current_scores, remaining_slots, future_rounds)
         else:
             rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
             result = run_monte_carlo(current_scores, rounds_remaining)
