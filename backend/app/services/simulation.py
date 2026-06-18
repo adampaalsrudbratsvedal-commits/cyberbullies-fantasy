@@ -25,8 +25,12 @@ def run_monte_carlo(
     players = list(current_scores.keys())
     scores = np.array([current_scores[p] for p in players], dtype=float)
 
+    # Deterministic seed based on current scores so same standings → same result
+    seed = int(sum(scores)) % (2**31)
+    rng = np.random.default_rng(seed)
+
     if rounds_remaining > 0:
-        future = np.random.normal(mean, std, size=(len(players), rounds_remaining, n))
+        future = rng.normal(mean, std, size=(len(players), rounds_remaining, n))
         final_scores = scores[:, None] + future.sum(axis=1)
     else:
         final_scores = scores[:, None] * np.ones((len(players), n))

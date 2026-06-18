@@ -266,35 +266,8 @@ async def get_simulation(db: Session = Depends(get_db)):
             future_rounds = max(0, TOTAL_ROUNDS - rounds_played - 1)
             return run_monte_carlo_live(current_scores, remaining_slots, future_rounds)
         else:
-            # Between rounds: serve from snapshot so numbers match the history chart exactly
-            snapshots = (
-                db.query(ProbabilitySnapshot)
-                .filter_by(round_id=rounds_played)
-                .all()
-            )
-            if snapshots:
-                return {
-                    s.fifa_username: {
-                        "win_probability": s.win_probability,
-                        "last_probability": s.last_probability,
-                        "expected_final": s.expected_final,
-                    }
-                    for s in snapshots
-                }
-            # No snapshot yet — compute fresh and save
             rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
-            result = run_monte_carlo(current_scores, rounds_remaining)
-            db.query(ProbabilitySnapshot).filter_by(round_id=rounds_played).delete()
-            for username, probs in result.items():
-                db.add(ProbabilitySnapshot(
-                    round_id=rounds_played,
-                    fifa_username=username,
-                    win_probability=probs["win_probability"],
-                    last_probability=probs["last_probability"],
-                    expected_final=probs["expected_final"],
-                ))
-            db.commit()
-            return result
+            return run_monte_carlo(current_scores, rounds_remaining)
     except Exception as e:
         return {"_error": str(e), "_traceback": traceback.format_exc()[-800:]}
 
