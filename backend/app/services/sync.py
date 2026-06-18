@@ -4,6 +4,8 @@ from .fifa_api import fetch_standings, fetch_user_squad, normalise_team
 from ..models.round_score import RoundScore
 from ..models.fantasy_squad_pick import FantasySquadPick
 from ..models.fantasy_player import FantasyPlayer
+from ..models.probability_snapshot import ProbabilitySnapshot
+from .simulation import run_monte_carlo
 
 TOTAL_ROUNDS = 8
 
@@ -106,10 +108,31 @@ async def sync_league(db: Session, sync_squads: bool = True) -> dict:
 
     squads_updated = 0
     if sync_squads and ranks:
-        # Sync squads for the current/next round
         current_round = (rounds_played + 1) if ranks and all(r.get("overallPoints") is None for r in ranks) else rounds_played
         try:
             squads_updated = await _sync_squads_inner(db, ranks, current_round)
+        except Exception:
+            pass
+
+    # Save probability snapshot whenever we have real scores
+    snapshot_saved = False
+    if updated > 0 and current_scores:
+        try:
+            latest_snapshot_round = db.query(func.max(ProbabilitySnapshot.round_id)).scalar() or 0
+            if rounds_played >= latest_snapshot_round:
+                rounds_remaining = max(0, TOTAL_ROUNDS - rounds_played)
+                sim_result = run_monte_carlo(current_scores, rounds_remaining, n=50000)
+                db.query(ProbabilitySnapshot).filter_by(round_id=rounds_played).delete()
+                for username, probs in sim_result.items():
+                    db.add(ProbabilitySnapshot(
+                        round_id=rounds_played,
+                        fifa_username=username,
+                        win_probability=probs["win_probability"],
+                        last_probability=probs["last_probability"],
+                        expected_final=probs["expected_final"],
+                    ))
+                db.commit()
+                snapshot_saved = True
         except Exception:
             pass
 
@@ -119,4 +142,5 @@ async def sync_league(db: Session, sync_squads: bool = True) -> dict:
         "players_found": len(current_scores),
         "ranks_raw": len(ranks),
         "squads_updated": squads_updated,
+        "snapshot_saved": snapshot_saved,
     }
