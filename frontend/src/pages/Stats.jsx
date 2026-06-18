@@ -177,6 +177,8 @@ function Section({
   scenarioCount,
   mode,           // 'win' | 'last'
 }) {
+  const [top4Only, setTop4Only] = useState(false)
+
   const top3 = entries.slice(0, 3)
   const rest = entries.slice(3)
   const max = entries[0]?.value ?? 0
@@ -185,12 +187,27 @@ function Section({
       ? ['#5eea93','#fbbf24','#7dd3fc','#f97316','#a78bfa','#fb7185','#34d399','#e879f9','#facc15','#38bdf8','#f43f5e','#22d3ee']
       : ['#fb7185','#fda4af','#fbbf24','#f97316','#a78bfa','#5eea93','#34d399','#e879f9','#facc15','#38bdf8','#7dd3fc','#22d3ee']
 
-  // Build chart data — all players plotted; one row per round.
   const allNames = entries.map((e) => e.name)
   const colors = allNames.map((_, i) => PALETTE[i % PALETTE.length])
+
+  // Top 4 sorted by the relevant probability in the latest snapshot round
   const rounds = probHistory
     ? Object.keys(probHistory).map(Number).sort((a, b) => a - b)
     : []
+  const lastRound = rounds.length ? rounds[rounds.length - 1] : null
+
+  const top4Names = lastRound != null
+    ? [...allNames]
+        .sort((a, b) => {
+          const va = probHistory?.[lastRound]?.[a]?.[valueKey] ?? 0
+          const vb = probHistory?.[lastRound]?.[b]?.[valueKey] ?? 0
+          return vb - va
+        })
+        .slice(0, 4)
+    : allNames.slice(0, 4)
+
+  const visibleNames = top4Only ? top4Names : allNames
+
   const chartData = rounds.map((r) => {
     const point = { round: `R${r}` }
     allNames.forEach((n) => {
@@ -199,7 +216,6 @@ function Section({
     })
     return point
   })
-  const lastRound = rounds.length ? rounds[rounds.length - 1] : null
 
   return (
     <section
@@ -275,18 +291,50 @@ function Section({
 
         {/* Chart */}
         <div className="flex flex-col gap-2.5 min-w-0">
-          <div
-            className="font-mono font-semibold uppercase"
-            style={{ fontSize: 10.5, color: TH.muted, letterSpacing: '0.16em' }}
-          >
-            UTVIKLING
+          <div className="flex items-center justify-between">
+            <div
+              className="font-mono font-semibold uppercase"
+              style={{ fontSize: 10.5, color: TH.muted, letterSpacing: '0.16em' }}
+            >
+              UTVIKLING
+            </div>
+            {/* Top 4 toggle */}
+            <button
+              onClick={() => setTop4Only((v) => !v)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: top4Only ? color + '22' : TH.bg,
+                border: `1px solid ${top4Only ? color : TH.border}`,
+                borderRadius: 99,
+                padding: '3px 10px',
+                cursor: 'pointer',
+                fontSize: 10,
+                fontFamily: 'monospace',
+                color: top4Only ? color : TH.dim,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                transition: 'all 0.15s',
+              }}
+            >
+              <span
+                style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: top4Only ? color : TH.border,
+                  flexShrink: 0,
+                  transition: 'background 0.15s',
+                }}
+              />
+              TOPP 4
+            </button>
           </div>
           <div
             className="rounded-xl p-2.5"
             style={{ background: TH.bg, border: `1px solid ${TH.border}` }}
           >
             {chartData.length > 0 ? (
-              <ProbLineChart data={chartData} players={allNames} colors={colors} height={220} />
+              <ProbLineChart data={chartData} players={visibleNames} colors={visibleNames.map((n) => colors[allNames.indexOf(n)])} height={220} />
             ) : (
               <div
                 className="text-center py-12"
@@ -298,7 +346,8 @@ function Section({
           </div>
           {/* Legend */}
           <div className="flex flex-wrap gap-x-4 gap-y-2 px-1">
-            {allNames.map((n, i) => {
+            {visibleNames.map((n) => {
+              const i = allNames.indexOf(n)
               const lastPct = chartData[chartData.length - 1]?.[n]
               return (
                 <span
