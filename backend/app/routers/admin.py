@@ -11,6 +11,33 @@ from .auth import get_current_user
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
+class SetTokenBody(BaseModel):
+    x_sid: str
+    fp_user: str
+    refresh_token: str = ""
+
+
+@router.post("/set-token")
+async def set_token(body: SetTokenBody, db: Session = Depends(get_db)):
+    """Update FIFA session token (no auth required — called from curl)."""
+    from ..services.token_manager import token_manager
+    from ..models.fifa_token import FifaToken
+    token_manager._x_sid_db = body.x_sid.strip()
+    token_manager._fp_user = body.fp_user.strip()
+    if body.refresh_token:
+        token_manager._refresh_token = body.refresh_token.strip()
+    row = db.query(FifaToken).first()
+    if not row:
+        row = FifaToken()
+        db.add(row)
+    row.x_sid = token_manager._x_sid_db
+    row.fp_user = token_manager._fp_user
+    if body.refresh_token:
+        row.refresh_token = body.refresh_token.strip()
+    db.commit()
+    return {"ok": True, "x_sid": token_manager._x_sid_db[:12] + "…"}
+
+
 def require_admin(current_user: User = Depends(get_current_user)):
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Admin only")
