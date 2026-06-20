@@ -287,7 +287,7 @@ async def fetch_scorers() -> dict:
 
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            "https://api.football-data.org/v4/competitions/WC/scorers?limit=20",
+            "https://api.football-data.org/v4/competitions/WC/scorers?limit=100",
             headers={"X-Auth-Token": api_key},
             timeout=15,
         )
